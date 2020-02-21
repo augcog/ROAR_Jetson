@@ -5,8 +5,6 @@ import argparse
 
 import numpy as np
 
-import irmark1 as m1
-
 #import parts
 from config import load_config
 import vehicle
