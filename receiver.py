@@ -30,10 +30,10 @@ class Receiver:
             vel_wheel = vel_wheel.split()
             try:
                 throttle, steering = vel_wheel
+                throttle = float(throttle)
+                steering = float(steering)
             except:
                 continue
-            throttle = float(throttle)
-            steering = float(steering)
             if self.new_throttle >= MOTOR_NEUTRAL:
                 self.new_throttle = float(throttle - MOTOR_NEUTRAL) / (MOTOR_MAX - MOTOR_NEUTRAL)
             else:
