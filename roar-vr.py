@@ -8,8 +8,9 @@ from config import load_config
 import vehicle
 from camera import RS_D435i, CSICamera
 from receiver import Receiver
+from controller import NaiveController
 
-def drive(cfg, client_ip=None):
+def drive(cfg, client_ip=None, to_control=False):
 
     #Initialize car
     V = vehicle.Vehicle()
@@ -20,7 +21,10 @@ def drive(cfg, client_ip=None):
 
     V.add(camA, outputs=['cam/image_array_a'], threaded=True)
     V.add(camB, outputs=['cam/image_array_b', 'cam/image_array_c'], threaded=True)
-    V.add(Receiver(client_ip), threaded=True)
+    if to_control:
+        V.add(NaiveController(), threaded=True)
+    else:
+        V.add(Receiver(client_ip), threaded=True)
 
     #run the vehicle for 20 seconds
     V.start(rate_hz=cfg.DRIVE_LOOP_HZ, 
@@ -32,6 +36,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser();
     parser.add_argument('--ip', required=False, default=None, type=str)
+    parser.add_argument('-c', '--control', required=False, action='store_true')
     args = parser.parse_args()
     
-    drive(cfg, args.ip)
+    drive(cfg, args.ip, args.control)
