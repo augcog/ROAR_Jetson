@@ -7,6 +7,7 @@ import numpy as np
 from config import load_config
 import vehicle
 from camera import RS_D435i, CSICamera
+from sender import Sender
 from receiver import Receiver
 from controller import NaiveController
 
@@ -21,8 +22,10 @@ def drive(cfg, client_ip=None, to_control=False):
 
     V.add(camA, outputs=['cam/image_array_a'], threaded=True)
     V.add(camB, outputs=['cam/image_array_b', 'cam/image_array_c'], threaded=True)
+
     if to_control:
-        V.add(NaiveController(), threaded=True)
+        V.add(NaiveController(), outputs=['throttle', 'steering'], threaded=True)
+        V.add(Sender(), inputs=['throttle', 'steering'], threaded=True)
     else:
         V.add(Receiver(client_ip), threaded=True)
 
