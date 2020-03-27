@@ -10,6 +10,7 @@ class Controller:
     def run_threaded(self, **args):
         return self.new_throttle, self.new_steering
 
+
 class NaiveController(Controller):
     def __init__(self):
         Controller.__init__(self)

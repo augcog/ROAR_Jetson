@@ -23,10 +23,10 @@ class CSICamera(BaseCamera):
         return 'nvarguscamerasrc sensor-id=0 ! video/x-raw(memory:NVMM), width=%d, height=%d, format=(string)NV12, framerate=(fraction)%d/1 ! nvvidconv flip-method=%d ! nvvidconv ! video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! videoconvert ! appsink' % (
                 capture_width, capture_height, framerate, flip_method, output_width, output_height)
 
-    def gstreamer_pipelineout(self, output_width=1280, output_height=720, framerate=21,client_ip='127.0.0.1') : 
+    def gstreamer_pipelineout(self, output_width=1280, output_height=720, framerate=21, client_ip='127.0.0.1') : 
         return 'appsrc ! videoconvert ! video/x-raw, format=(string)BGRx, width=%d, height=%d, framerate=(fraction)%d/1 ! videoconvert ! video/x-raw, format=(string)I420 ! omxh264enc tune=zerolatency bitrate=8000000 speed-preset=ultrafast ! video/x-h264, stream-format=byte-stream ! rtph264pay mtu=1400 ! udpsink host=%s port=5000 sync=false async=false'%(output_width,output_height,framerate,client_ip)
     
-    def __init__(self, image_w=160, image_h=120, image_d=3, capture_width=640, capture_height=480, framerate=60, gstreamer_flip=0,client_ip='127.0.0.1'):
+    def __init__(self, image_w=160, image_h=120, image_d=3, capture_width=640, capture_height=480, framerate=60, gstreamer_flip=0, client_ip=None):
         '''
         gstreamer_flip = 0 - no flip
         gstreamer_flip = 1 - rotate CCW 90
@@ -56,11 +56,12 @@ class CSICamera(BaseCamera):
                 framerate=self.framerate,
                 flip_method=self.flip_method),
             cv2.CAP_GSTREAMER)
-        self.out_send = cv2.VideoWriter(self.gstreamer_pipelineout(
-                output_width=self.w,
-                output_height=self.h,
-                framerate=self.framerate,
-                client_ip=self.client_ip),cv2.CAP_GSTREAMER,0,self.framerate,(self.w,self.h), True)
+        if self.client_ip:
+            self.out_send = cv2.VideoWriter(self.gstreamer_pipelineout(
+                    output_width=self.w,
+                    output_height=self.h,
+                    framerate=self.framerate,
+                    client_ip=self.client_ip),cv2.CAP_GSTREAMER,0,self.framerate,(self.w,self.h), True)
 
         self.poll_camera()
         print('CSICamera loaded.. .warming camera')
@@ -73,8 +74,9 @@ class CSICamera(BaseCamera):
 
     def poll_camera(self):
         import cv2
-        self.ret , frame = self.camera.read()
-        self.out_send.write(frame)
+        self.ret, frame = self.camera.read()
+        if self.client_ip:
+            self.out_send.write(frame)
         self.frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         
 
@@ -98,10 +100,10 @@ class RS_D435i(object):
     Intel RealSense depth camera D435i combines the robust depth sensing capabilities of the D435 with the addition of an inertial measurement unit (IMU).
     ref: https://www.intelrealsense.com/depth-camera-d435i/
     '''
-    def gstreamer_pipelineout(self, output_width=1280, output_height=720, framerate=21,client_ip='127.0.0.1') : 
+    def gstreamer_pipelineout(self, output_width=1280, output_height=720, framerate=21, client_ip='127.0.0.1') : 
         return 'appsrc ! videoconvert ! video/x-raw, format=(string)BGRx, width=%d, height=%d, framerate=(fraction)%d/1 ! videoconvert ! video/x-raw, format=(string)I420 ! omxh264enc tune=zerolatency bitrate=8000000 speed-preset=ultrafast ! video/x-h264, stream-format=byte-stream ! rtph264pay mtu=1400 ! udpsink host=%s port=5001 sync=false async=false'%(output_width,output_height,framerate,client_ip)
 
-    def __init__(self, image_w=640, image_h=480, image_d=3, image_output=True, framerate=30,client_ip='127.0.0.1'):
+    def __init__(self, image_w=640, image_h=480, image_d=3, image_output=True, framerate=30, client_ip='127.0.0.1'):
         #Using the image_output will grab two image streams from the fisheye cameras but return only one.
         #This can be a bit much for USB2, but you can try it. Docs recommend USB3 connection for this.
         self.image_output = image_output
