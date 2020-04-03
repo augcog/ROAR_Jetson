@@ -6,7 +6,7 @@ This is the code for ROAR platform. It features low-latency jitter-free VR suppo
 ## Setup
 
 ### Jetson
-Clone this repository into your Jetson. The code runs on Python 3. Pre-requisite libraries include: `numpy`, `opencv-python`, `statistics`, `prettytable`, `pyserial`, `pyrealsense2`. Use `pip` to install them. If you have MIPI camera connected or you want to involve VR, you also need to install `Nvidia Accelatated GStreamer`, you can find the set up guidance [here](https://developer.download.nvidia.com/embedded/L4T/r32_Release_v1.0/Docs/Accelerated_GStreamer_User_Guide.pdf?BlbMrXc01wJrcGEdNwtlAEY35R0ofBnDCcpbfH9g71zqPsrglP7iv5hqz5_LciiElQF-TU38MzH9vO70egx8Fo7CgUvgJxcYrKVlPczq30tkevp9TbEg1nZJjtUmx7_DtTArOCqYbbH6coyDRsnPganEgVEkKVqCE33mXV__VE_2LGytTSE
+Clone this repository into your Jetson. The code runs on Python 3. Pre-requisite libraries include: `numpy`, `opencv-python`, `statistics`, `prettytable`, `pyserial`, `pyrealsense2`. Use `pip` to install them. If you have MIPI camera connected or you want to involve VR, you also need to install `Nvidia Accelatated GStreamer`, you can find the setup guidance [here](https://developer.download.nvidia.com/embedded/L4T/r32_Release_v1.0/Docs/Accelerated_GStreamer_User_Guide.pdf?BlbMrXc01wJrcGEdNwtlAEY35R0ofBnDCcpbfH9g71zqPsrglP7iv5hqz5_LciiElQF-TU38MzH9vO70egx8Fo7CgUvgJxcYrKVlPczq30tkevp9TbEg1nZJjtUmx7_DtTArOCqYbbH6coyDRsnPganEgVEkKVqCE33mXV__VE_2LGytTSE
 ).
 
 ### Arduino
