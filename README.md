@@ -16,7 +16,7 @@ Then we need to upload the Arduino code into Arduino board. This is done in Jets
 This part is necessary only if you want to involve VR into your tryout. To clarify, the system totally works find without VR. First and foremost, you have to have your Jetson and PC connected to the same local network and make sure network is in good condition to get smooth and jitter-free video streaming. Then setup VR device. Install [Oculus software](https://www.oculus.com/setup/) and setup your VR device according to guidance. And you need to have **Unity** installed. Finally clone [this repository](https://github.com/augcog/IRG-RACING-VR) into your PC.
 
 ## Run
-Enter `ROARVR` folder. Before you run the main program, you may want to modify the configuration in `myconfig.py`. For those whose cars have no MIPI camera mounted as rear camera, set `ENABLE_CSIC` false to disable it. Note that `ENABLE_CISC` has impact on details about how to customize your own `Controller` (will be explained later).
+Enter `ROARVR` folder. Before you run the main program, you may want to modify the configuration in `myconfig.py`. If you want to save data, set `TO_SAVE` `True` and set `SAVE_PATH`, `SAVE_DEPTH`, `SAVE_IMU` according to your need. For those whose cars have no MIPI camera mounted as rear camera, set `ENABLE_CSIC` `False` to disable it. Note that `ENABLE_CISC` has impact on details about how to customize your own `Controller` (will be explained later).
 
 If you get VR involved, set `CLIENT_IP` to ip address of your PC in the format as `"192.168.1.50"`. You can also specify ip address in command line. You can change `IMAGE_W` and `IMAGE_H` to get a different resolution, but along with that, you need to also change some parameters in Unity<!--- how to do this -->.
 
