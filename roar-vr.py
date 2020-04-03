@@ -10,6 +10,7 @@ from camera import RS_D435i, CSICamera
 from sender import Sender
 from receiver import Receiver
 from controller import *
+from datastore import TubHandler
 
 
 def drive(cfg, client_ip=None, to_control=False):
@@ -37,7 +38,24 @@ def drive(cfg, client_ip=None, to_control=False):
         V.add(ctr, inputs=ctr_inputs, outputs=['throttle', 'steering'], threaded=True)
         V.add(Sender(cfg), inputs=['throttle', 'steering'], threaded=True)
     else:
-        V.add(Receiver(client_ip, cfg), threaded=True)
+        V.add(Receiver(client_ip, cfg), outputs=['throttle', 'steering'], threaded=True)
+
+    if cfg.TO_SAVE:
+        if cfg.ENABLE_CSIC:
+            save_inputs = ['cam/image_array', 'cam_image_array_rear']
+            save_types = ['image_array', 'image_array']
+        else:
+            save_inputs = ['cam/image_array']
+            save_types = ['image_array']
+        if cfg.SAVE_DEPTH:
+            save_inputs += ['cam/depth_array']
+            save_types += ['lossless_image_array']
+        if cfg.SAVE_IMU:
+            save_inputs += ['imu/acl_x', 'imu/acl_y', 'imu/acl_z', 'imu/gyr_x', 'imu/gyr_y', 'imu/gyr_z']
+            save_types += ['float', 'float', 'float', 'float', 'float', 'float']
+        th = TubHandler(cfg.SAVE_PATH)
+        tub = th.new_tub_writer(inputs=save_inputs, types=save_types)
+        V.add(tub, inputs=save_inputs, outputs=['tub/num_records'], run_condition='recording')
 
     V.start(rate_hz=cfg.DRIVE_LOOP_HZ, 
             max_loop_count=cfg.MAX_LOOPS)

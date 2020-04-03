@@ -43,3 +43,4 @@ class Receiver:
             msg = struct.pack('>Ii', COMMAND_STEERING, int(self.new_steering * 32767))
             self.sock.sendto(msg, (self.client_ip, UDP_PORT))
             self.old_steering = self.new_steering
+        return self.new_throttle, self.new_steering

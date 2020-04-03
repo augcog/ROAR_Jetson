@@ -30,3 +30,9 @@ THETA_PWM_SCALE = 1500;
 CONTROLLER = "NaiveController"
 THROTTLE_MAX = 0.3
 STEERING_MAX = 1
+
+# SAVE
+TO_SAVE = False
+SAVE_PATH = "test_tub"
+SAVE_DEPTH = False
+SAVE_IMU = False
