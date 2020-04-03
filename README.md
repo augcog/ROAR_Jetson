@@ -6,19 +6,21 @@ This is the code for ROAR platform. It features low-latency jitter-free VR suppo
 ## Setup
 
 ### Jetson
-Clone this repository into your Jetson. The code runs on Python 3. Pre-requisite libraries include: `numpy`, `opencv-python`, `statistics`, `prettytable`, `pyserial`, `pyrealsense2`. Use `pip` to install them.
+Clone this repository into your Jetson. The code runs on Python 3. Pre-requisite libraries include: `numpy`, `opencv-python`, `statistics`, `prettytable`, `pyserial`, `pyrealsense2`. Use `pip` to install them. If you have MIPI camera connected or you want to involve VR, you also need to install `Nvidia Accelatated GStreamer`, you can find the set up guidance [here](https://developer.download.nvidia.com/embedded/L4T/r32_Release_v1.0/Docs/Accelerated_GStreamer_User_Guide.pdf?BlbMrXc01wJrcGEdNwtlAEY35R0ofBnDCcpbfH9g71zqPsrglP7iv5hqz5_LciiElQF-TU38MzH9vO70egx8Fo7CgUvgJxcYrKVlPczq30tkevp9TbEg1nZJjtUmx7_DtTArOCqYbbH6coyDRsnPganEgVEkKVqCE33mXV__VE_2LGytTSE
+).
 
 ### Arduino
 Then we need to upload the Arduino code into Arduino board. This is done in Jetson. In Jetson, launch **Arduino IDE**. Select `Arduino Nano` in `Tools -> Board: "..."` and `/dev/ttyUSB0` in `Tools -> Port: "..."`. Then click "Upload" button to burn the code into the board.
 
 
 ### PC
-This part is necessary only if you want to involve VR into your tryout. To clarify, the system totally works find without VR. First and foremost, you have to have your Jetson and PC connected to the same local network and make sure network is in good condition to get smooth and jitter-free video streaming. Then setup VR device. Install [Oculus software](https://www.oculus.com/setup/) and setup your VR device according to guidance. And you need to have **Unity** installed. Finally clone [this repository](https://github.com/augcog/IRG-RACING-VR) into your PC.
+This part is necessary only if you want to involve VR into your tryout. To clarify, the system totally works find without VR. First and foremost, you have to have your Jetson and PC connected to the same local network and make sure network is in good condition to get smooth and jitter-free video streaming. Then setup VR device. Install [Oculus software](https://www.oculus.com/setup/) and setup your VR device according to guidance. And you need to have **Unity** installed. Finally clone [this repository](https://github.com/augcog/IRG-RACING-VR) into your PC. 
+To develop and build the unity project, make sure you intstall [GStreamer](https://gstreamer.freedesktop.org/documentation/installing/on-windows.html?gi-language=c) first and then [build OpenCV with GStreamer](https://cv-tricks.com/how-to/installation-of-opencv-4-1-0-in-windows-10-from-source/).
 
 ## Run
-Enter `ROARVR` folder. Before you run the main program, you may want to modify the configuration in `myconfig.py`. If you want to save data, set `TO_SAVE` `True` and set `SAVE_PATH`, `SAVE_DEPTH`, `SAVE_IMU` according to your need. For those whose cars have no MIPI camera mounted as rear camera, set `ENABLE_CSIC` `False` to disable it. Note that `ENABLE_CISC` has impact on details about how to customize your own `Controller` (will be explained later).
+Enter `ROARVR` folder. Before you run the main program, you may want to modify the configuration in `myconfig.py`. For those whose cars have no MIPI camera mounted as rear camera, set `ENABLE_CSIC` false to disable it. Note that `ENABLE_CISC` has impact on details about how to customize your own `Controller` (will be explained later).
 
-If you get VR involved, set `CLIENT_IP` to ip address of your PC in the format as `"192.168.1.50"`. You can also specify ip address in command line. You can change `IMAGE_W` and `IMAGE_H` to get a different resolution, but along with that, you need to also change some parameters in Unity<!--- how to do this -->.
+If you get VR involved, set `CLIENT_IP` to ip address of your PC in the format as `"192.168.1.50"`. You can also specify ip address in command line. You can change `IMAGE_W` and `IMAGE_H` to get a different resolution, but along with that, you need to also change some parameters in Unity. First click on object 'Utility' in 'SampleScene', under the 'Inspector' tab on the right side, you can see two public variables `width` and `height`,these is the receiving resolution. Set these two values the same as `IMAGE_W` and `IMAGE_H`, which is the sending resolution. Besides, you may want to costomize the rendering resolution for either frontview window or rearview mirror, these settings can be found under the Inspector tab in `Canvas/FrontView` and `backmirror/Canvas/Image`.
 
 If you want to play it out in **Jetson-Control** mode, you can change `THROTTLE_MAX` and `STEERING_MAX` to automatically scale the values sent to Arduino to limit maximum speed and angle. To use your own custom `Controller` (will be explained later) instead of `NaiveController`, change `CONTROLLER` parameter to the name of the `Controller` class you define.
 
