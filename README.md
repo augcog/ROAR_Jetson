@@ -2,6 +2,7 @@
 
 ## Intro
 This is the code for ROAR platform that run on a Jetson Nano. It is extensible with respect to control side. By default, it is controlled by analog controller with help of Arduino, where Arduino receives signal from analog controller and control the car, which we call **Analog-Control** mode. When there is no analog controller on, the system switches to **Jetson-Control** mode, where Arduino receives signal from Jetson. In this case, you are allowed to implement your novel physical (e.g. joysticks) or algorithmic (e.g. autonomous pilot) controller and easily plug it in our system.
+
 While running, it keeps sending out video and control signals which could be received by other divices for display. We created a [ROAR_VR](https://github.com/augcog/ROAR_VR) platform which provides you immersive driving experience.
 
 ## Setup
@@ -18,7 +19,7 @@ Then we need to upload the Arduino code into Arduino board. This is done in Jets
 This part is optional, if you want to involve VR into your tryout, refer to [ROAR_VR](https://github.com/augcog/ROAR_VR/blob/master/README.md#setup).
 
 ## GStreamer
-Our video streaming relies on [GStreamer](https://gstreamer.freedesktop.org).GStreamer works on pipelines that consist of different modules. The data stream is provided by sources, transformed and encoded by codecs and filters and then passed to sinks such as a display window or other external API. We stream H.264 encoded video over rtp to a port using 'udpsink'. And the video could be recieved from 'udpsrc' on another device. The sending pipeline can be found in camera.py.
+Our video streaming relies on [GStreamer](https://gstreamer.freedesktop.org).GStreamer works on pipelines that consist of different modules. The data stream is provided by sources, transformed and encoded by codecs and filters and then passed to sinks such as a display window or other external API. We stream H.264 encoded video over rtp to a port using 'udpsink'. And the video could be received from 'udpsrc' on another device. The sending pipeline can be found in camera.py.
 
 On the receiver side, you can simply use command line to decode the videos. Here is an example command: 'gst-launch-1.0 udpsrc port=5000 ! application/x-rtp,encoding-name=H264,payload=96 ! rtph264depay ! h264parse ! avdec_h264 ! autovideosink'
 if the connection is successful, you will see the video shows in a pop-up window.
@@ -29,7 +30,7 @@ Our performance relies heavily on the speed of the network. We take advantage of
 
 Currently we are able to real-time stream two 1280*720 resolution videos.
 
-## Run
+## Runf
 Before you run the main program, you may want to modify the configuration in `myconfig.py`.
 
 If you get VR or other receiver involved, set `CLIENT_IP` to ip address of your PC in the format as `"192.168.1.50"`. You can also specify ip address in command line. You can change `IMAGE_W` and `IMAGE_H` to get a different resolution, but along with that, you need to also change some parameters on the receiver side. 
