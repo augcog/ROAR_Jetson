@@ -11,22 +11,32 @@ Clone this repository into your Jetson. The code runs on Python 3. Pre-requisite
 ).
 
 ### Arduino
-Then we need to upload the Arduino code into Arduino board. This is done in Jetson. In Jetson, launch **Arduino IDE**. Select `Arduino Nano` in `Tools -> Board: "..."` and `/dev/ttyUSB0` in `Tools -> Port: "..."`. Then click "Upload" button to burn the code into the board.
+Then we need to upload the Arduino code into Arduino board. This is done in Jetson. In Jetson, launch **Arduino IDE**. Select `Arduino Nano` in `Tools -> Board: "..."` and select the channel that connects your jetson and Arduino (For example `/dev/ttyUSB0`) in `Tools -> Port: "..."`. Then click "Upload" button to burn the code into the board.
 
 
-### PC
+### VR
+This part is optional, if you want to involve VR into your tryout, refer to [ROAR_VR](https://github.com/augcog/ROAR_VR/blob/master/README.md#setup).
 
+## GStreamer
+Our video streaming relies on [GStreamer](https://gstreamer.freedesktop.org).GStreamer works on pipelines that consist of different modules. The data stream is provided by sources, transformed and encoded by codecs and filters and then passed to sinks such as a display window or other external API. We stream H.264 encoded video over rtp to a port using 'udpsink'. And the video could be recieved from 'udpsrc' on another device. The sending pipeline can be found in camera.py.
+
+On the receiver side, you can simply use command line to decode the videos. Here is an example command: 'gst-launch-1.0 udpsrc port=5000 ! application/x-rtp,encoding-name=H264,payload=96 ! rtph264depay ! h264parse ! avdec_h264 ! autovideosink'
+if the connection is successful, you will see the video shows in a pop-up window.
+
+If you want to edit and display the video in some other application, GStreamer provides a sink plugin called 'appsink'. We recommend using OpenCV VideoCapture, which you can put the pipeline string in the constructor. Then you can treat it as any other video sources in OpenCV and read the frames. [Here is our sample code](https://github.com/augcog/ROAR_VR/blob/master/GStreamerReader/dllmain.cpp).
+
+Our performance relies heavily on the speed of the network. We take advantage of Wi-Fi 6, the faster next-generation Wi-Fi standard.
+
+Currently we are able to real-time stream two 1280*720 resolution videos.
 
 ## Run
-Enter `ROARVR` folder. Before you run the main program, you may want to modify the configuration in `myconfig.py`.
+Before you run the main program, you may want to modify the configuration in `myconfig.py`.
 
-If you get VR involved, set `CLIENT_IP` to ip address of your PC in the format as `"192.168.1.50"`. You can also specify ip address in command line. You can change `IMAGE_W` and `IMAGE_H` to get a different resolution, but along with that, you need to also change some parameters in Unity. First click on object `Utility` under `SampleScene`, and in the `Inspector` tab on the right side, you can see two public variables `width` and `height`. Set these two values the same as `IMAGE_W` and `IMAGE_H`. Besides, you may want to customize the rendering resolution for either front-view window or rear-view mirror. These settings can be found in the `Inspector` tab of `Canvas/FrontView` and `backmirror/Canvas/Image`.
+If you get VR or other receiver involved, set `CLIENT_IP` to ip address of your PC in the format as `"192.168.1.50"`. You can also specify ip address in command line. You can change `IMAGE_W` and `IMAGE_H` to get a different resolution, but along with that, you need to also change some parameters on the receiver side. 
 
 If you want to play it out in **Jetson-Control** mode, you can change `THROTTLE_MAX` and `STEERING_MAX` to automatically scale the values sent to Arduino to limit maximum speed and angle. To use your own custom `Controller` (will be explained later) instead of `NaiveController`, change `CONTROLLER` parameter to the name of the `Controller` class you define.
 
 After the configuration is all set, execute `./roar-vr.py` in command line to run in **Analog-Control** mode or `./roar-vr.py -c` to run in **Jetson-Control** mode. When you are playing with VR, you can specify ip address of PC in here by adding parameter in the command as `--ip "192.168.1.50"`. This will override the `CLIENT_IP` setting in `myconfig.py`.
-
-To enable VR, you then need to launch **Unity** in PC, open our another repository of Unity part and click "Play". When you want to stop everything, there is a bug here. Never stop program running on Jetson before stopping the game playing in **Unity**, otherwise **Unity** may hang.
 
 ## Customize
 To customize your own `Controller`, you need to create your own `XXXController` class INSIDE `controller.py`, having it inherited from `Controller` class and overriding `update` and `run_threaded` method. Please refer to `controller.py` to see the template.
