@@ -19,7 +19,9 @@ Then we need to upload the Arduino code into Arduino board. This is done in Jets
 This part is optional, if you want to involve VR into your tryout, refer to [ROAR_VR](https://github.com/augcog/ROAR_VR/blob/master/README.md#setup).
 
 ## GStreamer
-Our video streaming relies on [GStreamer](https://gstreamer.freedesktop.org).GStreamer works on pipelines that consist of different modules. The data stream is provided by sources, transformed and encoded by codecs and filters and then passed to sinks such as a display window or other external API. We stream H.264 encoded video over rtp to a port using 'udpsink'. And the video could be received from 'udpsrc' on another device. The sending pipeline can be found in camera.py.
+Our video streaming relies on [GStreamer](https://gstreamer.freedesktop.org), which is a pipeline-based cross platform multimedia framework used to handle streams of different formats.
+
+GStreamer works on pipelines that consist of different modules. The data stream is provided by sources, transformed and encoded by codecs and filters and then passed to sinks such as a display window or other external API. It provides a wide range of plugins, all you need to do is to assemble those elements as a pipeline. We stream H.264 encoded video over rtp to a port using 'udpsink'. And the video could be received from 'udpsrc' on another device. The sending pipeline can be found in camera.py.
 
 On the receiver side, you can simply use command line to decode the videos. Here is an example command: 'gst-launch-1.0 udpsrc port=5000 ! application/x-rtp,encoding-name=H264,payload=96 ! rtph264depay ! h264parse ! avdec_h264 ! autovideosink'
 if the connection is successful, you will see the video shows in a pop-up window.
