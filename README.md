@@ -30,7 +30,7 @@ Our performance relies heavily on the speed of the network. We take advantage of
 
 Currently we are able to real-time stream two 1280*720 resolution videos.
 
-## Runf
+## Run
 Before you run the main program, you may want to modify the configuration in `myconfig.py`.
 
 If you get VR or other receiver involved, set `CLIENT_IP` to ip address of your PC in the format as `"192.168.1.50"`. You can also specify ip address in command line. You can change `IMAGE_W` and `IMAGE_H` to get a different resolution, but along with that, you need to also change some parameters on the receiver side. 
