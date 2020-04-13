@@ -1,7 +1,8 @@
-# ROARVR
+# ROAR_Jetson
 
 ## Intro
-This is the code for ROAR platform. It features low-latency jitter-free VR support which provides you with immersive driving experience. In addition, it is extensible with respect to control side. By default, it is controlled by analog controller with help of Arduino, where Arduino receives signal from analog controller and control the car, which we call **Analog-Control** mode. When there is no analog controller on, the system switches to **Jetson-Control** mode, where Arduino receives signal from Jetson. In this case, you are allowed to implement your novel physical (e.g. joysticks) or algorithmic (e.g. autonomous pilot) controller and easily plug it in our system.
+This is the code for ROAR platform that run on a Jetson Nano. It is extensible with respect to control side. By default, it is controlled by analog controller with help of Arduino, where Arduino receives signal from analog controller and control the car, which we call **Analog-Control** mode. When there is no analog controller on, the system switches to **Jetson-Control** mode, where Arduino receives signal from Jetson. In this case, you are allowed to implement your novel physical (e.g. joysticks) or algorithmic (e.g. autonomous pilot) controller and easily plug it in our system.
+While running, it keeps sending out video and control signals which could be received by other divices for display. We created a [ROAR_VR](https://github.com/augcog/ROAR_VR) platform which provides you immersive driving experience.
 
 ## Setup
 
@@ -14,8 +15,7 @@ Then we need to upload the Arduino code into Arduino board. This is done in Jets
 
 
 ### PC
-This part is necessary only if you want to involve VR into your tryout. To clarify, the system totally works find without VR. First and foremost, you have to have your Jetson and PC connected to the same local network and make sure network is in good condition to get smooth and jitter-free video streaming. Then setup VR device. Install [Oculus software](https://www.oculus.com/setup/) and setup your VR device according to guidance. And you need to have **Unity** installed. Finally clone [this repository](https://github.com/augcog/IRG-RACING-VR) into your PC. 
-To develop and build the unity project, make sure you intstall [GStreamer](https://gstreamer.freedesktop.org/documentation/installing/on-windows.html?gi-language=c) first and then [build OpenCV with GStreamer](https://cv-tricks.com/how-to/installation-of-opencv-4-1-0-in-windows-10-from-source/).
+
 
 ## Run
 Enter `ROARVR` folder. Before you run the main program, you may want to modify the configuration in `myconfig.py`.
