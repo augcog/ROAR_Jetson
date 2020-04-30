@@ -41,6 +41,8 @@ If you want to play it out in **Jetson-Control** mode, you can change `THROTTLE_
 
 After the configuration is all set, execute `./roar-vr.py` in command line to run in **Analog-Control** mode or `./roar-vr.py -c` to run in **Jetson-Control** mode. When you are playing with VR, you can specify ip address of PC in here by adding parameter in the command as `--ip "192.168.1.50"`. This will override the `CLIENT_IP` setting in `myconfig.py`.
 
+By default, if you run in **Jetson-Control** mode you will be using `NaiveController` and you can play it out. When the program is launched and initialization is done, type two floating-point numbers, indicating throttle and steering value, and hit `Enter`. Range of both is [-1,1]. You can do this as many times as you want before you press `Ctrl-C` to stop the program.
+
 ## Customize
 To customize your own `Controller`, you need to create your own `XXXController` class INSIDE `controller.py`, having it inherited from `Controller` class and overriding `update` and `run_threaded` method. Please refer to `controller.py` to see the template.
 
