@@ -37,7 +37,7 @@ def drive(cfg, client_ip=None, to_control=False):
 if __name__ == '__main__':
     cfg = load_config('myconfig.py')
 
-    parser = argparse.ArgumentParser();
+    parser = argparse.ArgumentParser()
     parser.add_argument('--ip', required=False, default=None, type=str)
     parser.add_argument('-c', '--control', required=False, action='store_true')
     args = parser.parse_args()
