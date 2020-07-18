@@ -1,0 +1,3 @@
+[submodule "ROAR-DeCal"]
+	path = ROAR-DeCal
+	url = https://github.com/augcog/ROAR-DeCal.git
