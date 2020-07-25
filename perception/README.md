@@ -5,6 +5,10 @@
 import perception.gpd as gpd
 
 gpd_agent = gpd.gpd_sensor(calibration_depth)
+
+# Running code...
+	orig_d_frame, d_frame, dets = gpd_agent.output_gpd(d_frame)
+# Running code...
 ```
 
 ### Params:
