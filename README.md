@@ -8,7 +8,9 @@ While running, it keeps sending out video and control signals which could be rec
 ## Setup
 
 ### Jetson
-Clone this repository into your Jetson. The code runs on Python 3. Pre-requisite libraries include: `numpy`, `opencv-python`, `statistics`, `prettytable`, `pyserial`, `pyrealsense2`. Use `pip` to install them. If you have MIPI camera connected or you want to involve VR, you also need to install `Nvidia Accelatated GStreamer`, you can find the setup guidance [here](https://developer.download.nvidia.com/embedded/L4T/r32_Release_v1.0/Docs/Accelerated_GStreamer_User_Guide.pdf?BlbMrXc01wJrcGEdNwtlAEY35R0ofBnDCcpbfH9g71zqPsrglP7iv5hqz5_LciiElQF-TU38MzH9vO70egx8Fo7CgUvgJxcYrKVlPczq30tkevp9TbEg1nZJjtUmx7_DtTArOCqYbbH6coyDRsnPganEgVEkKVqCE33mXV__VE_2LGytTSE
+Clone this repository into your Jetson. The code runs on Python 3. Pre-requisite libraries include: `numpy`, `opencv-python`, `statistics`, `prettytable`, `pyserial`. Use `pip` to install them. The code will also need `pyrealsense2` module for Python. Currently pyrealsense2 pip package is not available for ARM processors, the Python binding needs to be built from source. Please follow the `buildLibrealsense.sh` script from https://www.jetsonhacks.com/2019/12/22/install-realsense-camera-in-5-minutes-jetson-nano/
+
+If you have MIPI camera connected or you want to involve VR, you also need to install `Nvidia Accelatated GStreamer`, you can find the setup guidance [here](https://developer.download.nvidia.com/embedded/L4T/r32_Release_v1.0/Docs/Accelerated_GStreamer_User_Guide.pdf?BlbMrXc01wJrcGEdNwtlAEY35R0ofBnDCcpbfH9g71zqPsrglP7iv5hqz5_LciiElQF-TU38MzH9vO70egx8Fo7CgUvgJxcYrKVlPczq30tkevp9TbEg1nZJjtUmx7_DtTArOCqYbbH6coyDRsnPganEgVEkKVqCE33mXV__VE_2LGytTSE
 ).
 
 ### Arduino
@@ -43,9 +45,9 @@ After the configuration is all set, execute `./roar-vr.py` in command line to ru
 
 Some examples
 ```
-# ./roar-vr.py                      # Analog-Control mode. No video streaming.
-$ ./roar-vr.py --ip 192.168.1.50    # Analog-Control mode. Stream video to 192.168.1.50.
-$ ./roar-vr.py -c                   # Jetson-Control mode. By default you will enter commandline controller.
+$ python3 ./roar-vr.py                      # Analog-Control mode. No video streaming.
+$ python3 ./roar-vr.py --ip 192.168.1.50    # Analog-Control mode. Stream video to 192.168.1.50.
+$ python3 ./roar-vr.py -c                   # Jetson-Control mode. By default you will enter commandline controller.
 ```
 
 By default, if you run in **Jetson-Control** mode you will be using `NaiveController` and you can play it out. When the program is launched and initialization is done, type two floating-point numbers, indicating throttle and steering value, and hit `Enter`. Range of both is [-1,1]. You can do this as many times as you want before you press `Ctrl-C` to stop the program.
