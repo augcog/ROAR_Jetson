@@ -9,7 +9,7 @@ THETA_MIN = 0;
 
 class Sender:
     def __init__(self):
-        self.ser = serial.Serial('/dev/ttyUSB0', 9600, timeout=1)
+        self.ser = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
 
     def update(self):
         pass
