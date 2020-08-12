@@ -1,4 +1,4 @@
-int TESTING_STATE = false; //test between receiving Nvidia Jetson Signal and Writing Constant PWM
+int TESTING_STATE = true; //test between receiving Nvidia Jetson Signal and Writing Constant PWM
 
 char receivedData[100]; //creates variable to store data from jetson (100 is byte size)
 char handshake = '&';
