@@ -1,4 +1,4 @@
-int TESTING_STATE = true; //test between receiving Nvidia Jetson Signal and Writing Constant PWM
+bool TESTING_STATE = true; //test between receiving Nvidia Jetson Signal and Writing Constant PWM
 
 char receivedData[100]; //creates variable to store data from jetson (100 is byte size)
 char handshake = '&';
@@ -105,7 +105,7 @@ void loop()
     servoChannel1.writeMicroseconds(steering_write);
   } else if (receiverStateVar == HIGH) {
 
-    if (TESTING_STATE = true) {
+    if (TESTING_STATE == true) {
       throttle_write = 1540;
       steering_write = 1900;
     } else {
@@ -121,8 +121,8 @@ void loop()
         if (s != NULL) throttle_read = atoi(s); //sets variable to received data and converts ASCII to integer if message is not empty
         s = strtok(NULL, " ");
         if (s != NULL) steering_read = atoi(s); //sets variable to received data and converts ASCII to integer if message is not empty
-        steering_read = steering_write;
-        throttle_read = throttle_write;
+        steering_write = steering_read;
+        throttle_write = throttle_read;
       } else {
 
         throttle_write = 1500; //neutral PWM
