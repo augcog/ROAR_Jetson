@@ -20,4 +20,4 @@ class Sender:
         else:
             throttle_send = int(MOTOR_NEUTRAL + (MOTOR_NEUTRAL - MOTOR_MIN) * throttle + 0.5)
         steering_send = int(THETA_MIN + (steering / 2 + 0.5) * (THETA_MAX - THETA_MIN) + 0.5)
-        self.ser.write('{} {}\n'.format(throttle_send, steering_send).encode())
+        self.ser.write('& {} {}\n'.format(throttle_send, steering_send).encode('ascii'))
