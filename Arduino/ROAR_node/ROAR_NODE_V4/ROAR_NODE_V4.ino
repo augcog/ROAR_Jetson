@@ -106,7 +106,7 @@ void loop()
   } else if (receiverStateVar == HIGH) {
 
     if (TESTING_STATE == true) {
-      throttle_write = 1540;
+      throttle_write = 1500;
       steering_write = 1900;
     } else {
 
@@ -123,12 +123,13 @@ void loop()
         if (s != NULL) steering_read = atoi(s); //sets variable to received data and converts ASCII to integer if message is not empty
         steering_write = steering_read;
         throttle_write = throttle_read;
-      } else {
-
-        throttle_write = 1500; //neutral PWM
-        steering_write = 1500; //neutral PWM
-
-      }
+      } 
+//      else {
+//
+//        throttle_write = 1500; //neutral PWM
+//        steering_write = 1500; //neutral PWM
+//
+//      }
     }
 
     servoChannel2.writeMicroseconds(throttle_write);
