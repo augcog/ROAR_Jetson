@@ -4,8 +4,7 @@
 
 **Note**: You need to first clone this repository and checkout to branch [fix-jetson-control](https://github.com/augcog/ROAR_Jetson/tree/fix_jetson_control) in your Jetson Nano (Since you are reading this markdown file, I will assume you already did so).
 
-**Demo**: Here is the link to the video: [Jetson Control demo
-](https://youtu.be/1LLeuwiGe3c).
+**Demo**: Here is the link to the video: [Jetson Control demo](https://youtu.be/1LLeuwiGe3c).
 
 ## Arduino
 To run the Jetson-Control from the terminal, you need to update Arduino code first. Below are the specific instructions:
@@ -30,7 +29,7 @@ Now you are ready to run the Jetson-Control from the terminal. Below are the spe
 
 2. Turn on your radio controller and try throttle/steering (make sure they are function correctly, if not, follow the instructions here: [How to Calibrate Traxxas Electronic Speed Controls](https://youtu.be/ix-J85uRFjE))
 
-3. **Turn off your radio controller**
+3. **Important: Turn off your radio controller**
 
 4. In your terminal, make sure you are inside the repository, i.e., `cd ROAR_Jetson`
 
