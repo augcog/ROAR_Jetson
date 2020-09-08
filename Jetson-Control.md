@@ -4,6 +4,9 @@
 
 **Note**: You need to first clone this repository and checkout to branch [fix-jetson-control](https://github.com/augcog/ROAR_Jetson/tree/fix_jetson_control) in your Jetson Nano (Since you are reading this markdown file, I will assume you already did so).
 
+**Demo**: Here is the link to the video: [Jetson Control demo
+](https://youtu.be/1LLeuwiGe3c).
+
 ## Arduino
 To run the Jetson-Control from the terminal, you need to update Arduino code first. Below are the specific instructions:
 
