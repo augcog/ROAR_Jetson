@@ -15,10 +15,7 @@ from ROAR_Jetson.jetson_cmd_sender import JetsonCommandSender
 import logging
 
 class Vehicle:
-    def __init__(self, mem=None):
-        if not mem:
-            mem = Memory()
-        self.mem = mem
+    def __init__(self):
         self.parts = []
         self.on = True
         self.threads = []
@@ -108,7 +105,6 @@ class Vehicle:
                     # print a message when could not maintain loop rate.
                     if verbose:
                         print('WARN::Vehicle: jitter violation in vehicle loop with value:', abs(sleep_time))
-
         except KeyboardInterrupt:
             pass
         finally:
