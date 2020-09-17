@@ -7,7 +7,7 @@ import numpy as np
 from config import load_config
 import vehicle
 from camera import RS_D435i, CSICamera
-from sender import Sender
+from jetson_cmd_sender import JetsonCommandSender as Sender
 from receiver import Receiver
 from controller import NaiveController
 
@@ -37,9 +37,9 @@ def drive(cfg, client_ip=None, to_control=False):
 if __name__ == '__main__':
     cfg = load_config('myconfig.py')
 
-    parser = argparse.ArgumentParser();
+    parser = argparse.ArgumentParser()
     parser.add_argument('--ip', required=False, default=None, type=str)
     parser.add_argument('-c', '--control', required=False, action='store_true')
     args = parser.parse_args()
-    
+    print(args.control)
     drive(cfg, args.ip, args.control)

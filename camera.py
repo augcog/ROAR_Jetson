@@ -90,7 +90,7 @@ class CSICamera(BaseCamera):
         print('stoping CSICamera')
         time.sleep(.5)
         del(self.camera)
-        out_send.release()
+        self.out_send.release()
 
 
 class RS_D435i(object):

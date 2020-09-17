@@ -10,49 +10,9 @@ import time
 from statistics import median
 from threading import Thread
 from prettytable import PrettyTable
-try:
-    from ROAR_Jetson.memory import Memory
-except:
-    from memory import Memory
-
-
-class PartProfiler:
-    def __init__(self):
-        self.records = {}
-
-    def profile_part(self, p):
-        self.records[p] = {"times": []}
-
-    def on_part_start(self, p):
-        self.records[p]['times'].append(time.time())
-
-    def on_part_finished(self, p):
-        now = time.time()
-        prev = self.records[p]['times'][-1]
-        delta = now - prev
-        thresh = 0.000001
-        if delta < thresh or delta > 100000.0:
-            delta = thresh
-        self.records[p]['times'][-1] = delta
-
-    def report(self):
-        print("Part Profile Summary: (times in ms)")
-        pt = PrettyTable()
-        pt.field_names = ["part", "max", "min", "avg", "median"]
-        for p, val in self.records.items():
-            # remove first and last entry because you there could be one-off
-            # time spent in initialisations, and the latest diff could be
-            # incomplete because of user keyboard interrupt
-            arr = val['times'][1:-1]
-            if len(arr) == 0:
-                continue
-            pt.add_row([p.__class__.__name__,
-                        "%.2f" % (max(arr) * 1000),
-                        "%.2f" % (min(arr) * 1000),
-                        "%.2f" % (sum(arr) / len(arr) * 1000),
-                        "%.2f" % (median(arr) * 1000)])
-        print(pt)
-
+from ROAR_Jetson.memory import Memory
+from ROAR_Jetson.jetson_cmd_sender import JetsonCommandSender
+import logging
 
 class Vehicle:
     def __init__(self, mem=None):
@@ -62,7 +22,7 @@ class Vehicle:
         self.parts = []
         self.on = True
         self.threads = []
-        self.profiler = PartProfiler()
+        self.logger = logging.getLogger("Jetson Vehicle")
 
     def add(self, part, inputs=[], outputs=[],
             threaded=False, run_condition=None):
@@ -83,7 +43,7 @@ class Vehicle:
         assert type(threaded) is bool, "threaded is not a boolean: %r" % threaded
 
         p = part
-        print('Adding part {}.'.format(p.__class__.__name__))
+        self.logger.info('Adding part {}.'.format(p.__class__.__name__))
         entry = {}
         entry['part'] = p
         entry['inputs'] = inputs
@@ -96,7 +56,6 @@ class Vehicle:
             entry['thread'] = t
 
         self.parts.append(entry)
-        self.profiler.profile_part(part)
 
     def remove(self, part):
         """
@@ -123,16 +82,14 @@ class Vehicle:
         """
 
         try:
-
             self.on = True
-
             for entry in self.parts:
                 if entry.get('thread'):
                     # start the update thread
                     entry.get('thread').start()
 
             # wait until the parts warm up.
-            print('Starting vehicle...')
+            self.logger.info('Starting vehicle...')
 
             loop_count = 0
             while self.on:
@@ -152,9 +109,6 @@ class Vehicle:
                     if verbose:
                         print('WARN::Vehicle: jitter violation in vehicle loop with value:', abs(sleep_time))
 
-                if verbose and loop_count % 200 == 0:
-                    self.profiler.report()
-
         except KeyboardInterrupt:
             pass
         finally:
@@ -165,32 +119,15 @@ class Vehicle:
         loop over all parts
         """
         for entry in self.parts:
-            run = True
-            # check run condition, if it exists
-            if entry.get('run_condition'):
-                run_condition = entry.get('run_condition')
-                run = self.mem.get([run_condition])[0]
-            if run:
-                # get part
-                p = entry['part']
-                # start timing part run
-                self.profiler.on_part_start(p)
-                # get inputs from memory
-                inputs = self.mem.get(entry['inputs'])
-                # run the part
-                if entry.get('thread'):
-                    outputs = p.run_threaded(*inputs)
-
-                else:
-                    outputs = p.run(*inputs)
-                # save the output to memory
-                if outputs is not None:
-                    self.mem.put(entry['outputs'], outputs)
-                # finish timing part run
-                self.profiler.on_part_finished(p)
+            p = entry["part"]
+            if entry.get('thread') and isinstance(p, JetsonCommandSender):
+                # send the throttle and steering to Arduino
+                p.run_threaded(throttle=new_throttle, steering=new_steering)
+            else:
+                self.logger.error(f"Unknown part [{p}]")
 
     def stop(self):
-        print('\n\nShutting down vehicle and its parts...')
+        self.logger.debug('\n\nShutting down vehicle and its parts...')
         for entry in self.parts:
             try:
                 entry['part'].shutdown()
@@ -199,5 +136,3 @@ class Vehicle:
                 pass
             except Exception as e:
                 print(e)
-
-        self.profiler.report()
