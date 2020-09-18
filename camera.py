@@ -130,7 +130,6 @@ class RS_D435i(object):
 
         # Start streaming with requested config
         self.pipe.start(cfg)
-        print("here")
         self.running = True
 
         zero_vec = (0.0, 0.0, 0.0)
