@@ -8,9 +8,9 @@ Created on Sun Jun 25 10:44:24 2017
 
 import time
 from threading import Thread
-from ROAR_Jetson.jetson_cmd_sender import JetsonCommandSender
+from ROAR.ROAR_Jetson.jetson_cmd_sender import JetsonCommandSender
 import logging
-from ROAR_Jetson.camera import RS_D435i
+from ROAR.ROAR_Jetson.camera import RS_D435i
 from typing import Optional
 import numpy as np
 

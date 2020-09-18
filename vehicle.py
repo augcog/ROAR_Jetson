@@ -11,7 +11,7 @@ from statistics import median
 from threading import Thread
 from prettytable import PrettyTable
 try:
-    from ROAR_Jetson.memory import Memory
+    from ROAR.ROAR_Jetson.memory import Memory
 except:
     from memory import Memory
 

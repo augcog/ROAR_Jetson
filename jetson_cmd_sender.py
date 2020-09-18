@@ -33,7 +33,6 @@ class JetsonCommandSender:
         self.prev_steering = steering_send
         try:
             pass
-            # self.ser.read(5)
         except KeyboardInterrupt as e:
             self.logger.debug("Interrupted Using Keyboard")
             exit(0)
