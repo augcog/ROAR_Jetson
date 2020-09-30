@@ -57,14 +57,14 @@ class JetsonRunner:
                 vehicle_control = VehicleControl()
                 if self.auto_pilot:
                     vehicle_control: VehicleControl = self.agent.run_step(sensors_data=sensors_data, vehicle=vehicle)
-
+                print("Vehicle Control", vehicle_control)
                 # manual control always take precedence
                 # if use_manual_control:
                 #     should_continue, vehicle_control = self.update_pygame(clock=clock)
                 # pass the output into sender to send it
                 self.jetson_vehicle.update_parts(new_throttle=vehicle_control.throttle,
                                                  new_steering=vehicle_control.steering)
-
+                print("Updated Parts")
         except KeyboardInterrupt:
             self.logger.info("Keyboard Interrupt detected. Safely quitting")
             self.jetson_vehicle.stop()
