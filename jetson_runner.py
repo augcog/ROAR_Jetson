@@ -25,15 +25,14 @@ class JetsonRunner:
         self.setup_pygame()
         self.setup_jetson_vehicle()
         self.auto_pilot = True
+
         self.logger.info("Jetson Vehicle Connected and Intialized")
 
     def setup_pygame(self):
         pygame.init()
         pygame.font.init()
-        self.display = pygame.display.set_mode(
-            (self.jetson_config.pygame_display_width, self.jetson_config.pygame_display_height),
-            pygame.HWSURFACE | pygame.DOUBLEBUF
-        )
+        self.display = pygame.display.set_mode((self.jetson_config.pygame_display_width,
+                                                self.jetson_config.pygame_display_height))
 
     def setup_jetson_vehicle(self):
         self.jetson_vehicle.add(JetsonCommandSender(), inputs=['throttle', 'steering'], threaded=True)
@@ -44,8 +43,9 @@ class JetsonRunner:
     def start_game_loop(self, use_manual_control=False):
         self.logger.info("Starting Game Loop")
         try:
+
             clock = pygame.time.Clock()
-            should_continue = True
+            should_continue = False
             while should_continue:
                 clock.tick_busy_loop(60)
 
