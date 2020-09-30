@@ -45,10 +45,10 @@ class JetsonRunner:
         self.logger.info("Starting Game Loop")
         try:
 
-            # clock = pygame.time.Clock()
+            clock = pygame.time.Clock()
             should_continue = True
             while should_continue:
-                # clock.tick_busy_loop(60)
+                clock.tick_busy_loop(60)
 
                 # pass throttle and steering into the bridge
                 sensors_data, vehicle = self.convert_data()
