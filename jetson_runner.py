@@ -7,7 +7,7 @@ from ROAR.roar_autonomous_system.agent_module.agent import Agent
 from ROAR.bridges.jetson_bridge import JetsonBridge
 from ROAR.ROAR_Jetson.camera import RS_D435i
 import logging
-import pygame
+# import pygame
 from ROAR.ROAR_Jetson.jetson_keyboard_control import JetsonKeyboardControl
 import numpy as np
 from ROAR.ROAR_Jetson.jetson_config import JetsonConfig
