@@ -7,7 +7,7 @@ from ROAR.roar_autonomous_system.agent_module.agent import Agent
 from ROAR.bridges.jetson_bridge import JetsonBridge
 from ROAR.ROAR_Jetson.camera import RS_D435i
 import logging
-# import pygame
+import pygame
 from ROAR.ROAR_Jetson.jetson_keyboard_control import JetsonKeyboardControl
 import numpy as np
 from ROAR.ROAR_Jetson.jetson_config import JetsonConfig
@@ -45,10 +45,10 @@ class JetsonRunner:
         self.logger.info("Starting Game Loop")
         try:
 
-            # clock = pygame.time.Clock()
+            clock = pygame.time.Clock()
             should_continue = False
             while should_continue:
-                # clock.tick_busy_loop(60)
+                clock.tick_busy_loop(60)
 
                 # pass throttle and steering into the bridge
                 sensors_data, vehicle = self.convert_data()
