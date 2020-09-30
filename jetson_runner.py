@@ -46,7 +46,7 @@ class JetsonRunner:
         try:
 
             # clock = pygame.time.Clock()
-            should_continue = False
+            should_continue = True
             while should_continue:
                 # clock.tick_busy_loop(60)
 
