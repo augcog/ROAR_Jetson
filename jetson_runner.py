@@ -29,10 +29,11 @@ class JetsonRunner:
         self.logger.info("Jetson Vehicle Connected and Intialized")
 
     def setup_pygame(self):
-        pygame.init()
-        pygame.font.init()
-        self.display = pygame.display.set_mode((self.jetson_config.pygame_display_width,
-                                                self.jetson_config.pygame_display_height))
+        pass
+        # pygame.init()
+        # pygame.font.init()
+        # self.display = pygame.display.set_mode((self.jetson_config.pygame_display_width,
+        #                                         self.jetson_config.pygame_display_height), pygame.OPENGL)
 
     def setup_jetson_vehicle(self):
         self.jetson_vehicle.add(JetsonCommandSender(), inputs=['throttle', 'steering'], threaded=True)
@@ -44,10 +45,10 @@ class JetsonRunner:
         self.logger.info("Starting Game Loop")
         try:
 
-            clock = pygame.time.Clock()
+            # clock = pygame.time.Clock()
             should_continue = False
             while should_continue:
-                clock.tick_busy_loop(60)
+                # clock.tick_busy_loop(60)
 
                 # pass throttle and steering into the bridge
                 sensors_data, vehicle = self.convert_data()
@@ -58,8 +59,8 @@ class JetsonRunner:
                     vehicle_control: VehicleControl = self.agent.run_step(sensors_data=sensors_data, vehicle=vehicle)
 
                 # manual control always take precedence
-                if use_manual_control:
-                    should_continue, vehicle_control = self.update_pygame(clock=clock)
+                # if use_manual_control:
+                #     should_continue, vehicle_control = self.update_pygame(clock=clock)
                 # pass the output into sender to send it
                 self.jetson_vehicle.update_parts(new_throttle=vehicle_control.throttle,
                                                  new_steering=vehicle_control.steering)
