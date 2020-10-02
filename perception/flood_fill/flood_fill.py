@@ -42,11 +42,11 @@ jdx_front = np.clip(jdx + 1, 0, jdx.max()).flatten()
 idx = idx.flatten()
 jdx = jdx.flatten()
 
-rand_idx = np.random.choice(np.arange(idx.shape[0]), size=d1*d2, replace=False)
-f1 = (idx_front * d2 + jdx)[rand_idx]
-f2 = (idx_back  * d2 + jdx)[rand_idx]
-f3 = (idx * d2 + jdx_front)[rand_idx]
-f4 = (idx * d2 + jdx_back )[rand_idx]
+# rand_idx = np.random.choice(np.arange(idx.shape[0]), size=d1*d2, replace=False)
+f1 = (idx_front * d2 + jdx)# [rand_idx]
+f2 = (idx_back  * d2 + jdx)# [rand_idx]
+f3 = (idx * d2 + jdx_front)# [rand_idx]
+f4 = (idx * d2 + jdx_back )# [rand_idx]
 norm_fill = np.zeros((idx.shape[0]))
 
 def depth_filter(aligned_depth_frame):
@@ -95,7 +95,7 @@ def start():
         y = vtx[f3, :] - vtx[f4, :]
         xyz_norm = normalize_v3(np.cross(x, y))
         norm_flat = xyz_norm @ norm
-        norm_fill[rand_idx] = norm_flat
+        norm_fill = norm_flat # norm_fill[rand_idx] = norm_flat
         norm_matrix = np.abs(norm_fill.reshape((d1, d2)))
         
         norm_umatrix = cv2.resize(cv2.UMat(norm_matrix), (d2 * 4, d1 * 4))
