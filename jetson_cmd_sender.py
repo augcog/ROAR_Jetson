@@ -1,5 +1,6 @@
 import serial
 import logging
+import sys
 
 MOTOR_MAX = 1750
 MOTOR_MIN = 800
@@ -10,7 +11,11 @@ THETA_MIN = 0
 
 class JetsonCommandSender:
     def __init__(self):
-        self.ser = serial.Serial('/dev/ttyACM0', 115200, timeout=1, writeTimeout=1)
+        if 'win' in sys.platform:
+            self.ser = serial.Serial('COM4', 115200, timeout=1, writeTimeout=1)
+        else:
+            self.ser = serial.Serial('/dev/ttyACM0', 115200, timeout=1, writeTimeout=1)
+
         self.prev_throttle = 1500  # record previous throttle, set to neutral initially 
         self.prev_steering = 1500  # record previous steering, set to neutral initially
         self.logger = logging.getLogger("Jetson CMD Sender")
