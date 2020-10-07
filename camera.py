@@ -169,7 +169,6 @@ class RS_D435i(object):
             self.poll()
 
     def run_threaded(self):
-
         try:
             self.poll()
             return self.img, self.dimg
