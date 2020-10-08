@@ -35,7 +35,7 @@ class JetsonCommandSender:
         if servo_throttle_range is None:
             servo_throttle_range = [1300, 1700]
         if servo_steering_range is None:
-            servo_steering_range = [1300, 1700]
+            servo_steering_range = [0, 3000]
 
         if 'win' in sys.platform:
             self.ser = serial.Serial('COM4', 115200, timeout=1, writeTimeout=1)
