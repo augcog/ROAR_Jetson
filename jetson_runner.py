@@ -48,7 +48,8 @@ class JetsonRunner:
         pygame.font.init()
         self.display = pygame.display.set_mode((self.jetson_config.pygame_display_width,
                                                 self.jetson_config.pygame_display_height),
-                                               pygame.HWSURFACE | pygame.DOUBLEBUF)
+                                               pygame.OPENGL)
+                                               # pygame.HWSURFACE | pygame.DOUBLEBUF)
         self.pygame_initiated = True
 
 
