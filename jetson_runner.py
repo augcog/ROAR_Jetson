@@ -20,6 +20,7 @@ class JetsonRunner:
     Drive command for jetson to issue next command
     Update PyGame visualizations and controls parsing
     """
+
     def __init__(self, agent: Agent, jetson_config: JetsonConfig):
         self.jetson_vehicle: JetsonVehicle = JetsonVehicle()
         self.jetson_config = jetson_config
@@ -32,9 +33,6 @@ class JetsonRunner:
             self.setup_pygame()
         self.setup_jetson_vehicle()
         self.auto_pilot = True
-        self.logger.info("Jetson Vehicle Connected and Intialized")
-
-    def setup_pygame(self):
         self.pygame_initiated = False
         self.logger.info("Jetson Vehicle Connected and Intialized")
 
@@ -46,12 +44,16 @@ class JetsonRunner:
         """
         pygame.init()
         pygame.font.init()
-        self.display = pygame.display.set_mode((self.jetson_config.pygame_display_width,
-                                                self.jetson_config.pygame_display_height),
-                                               pygame.OPENGL)
-                                               # pygame.HWSURFACE | pygame.DOUBLEBUF)
+        import platform
+        if platform.architecture()[1] == "ELF":
+            self.display = pygame.display.set_mode((self.jetson_config.pygame_display_width,
+                                                    self.jetson_config.pygame_display_height),
+                                                   pygame.OPENGL)
+        else:
+            self.display = pygame.display.set_mode((self.jetson_config.pygame_display_width,
+                                                    self.jetson_config.pygame_display_height),
+                                                   pygame.HWSURFACE | pygame.DOUBLEBUF)
         self.pygame_initiated = True
-
 
     def setup_jetson_vehicle(self):
         """
