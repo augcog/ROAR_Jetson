@@ -14,7 +14,7 @@ UDP_PORT = 7788
 
 class Receiver:
     def __init__(self, client_ip):
-        self.ser = serial.Serial('/dev/ttyUSB0', 9600, timeout=1)
+        self.ser = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
         self.old_steering = 0.0
         self.old_throttle = 0.0
         self.new_steering = 0.0
