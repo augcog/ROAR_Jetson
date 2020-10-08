@@ -25,15 +25,16 @@ class JetsonRunner:
         self.setup_pygame()
         self.setup_jetson_vehicle()
         self.auto_pilot = True
+
         self.logger.info("Jetson Vehicle Connected and Intialized")
 
     def setup_pygame(self):
+        # pass
         pygame.init()
         pygame.font.init()
-        self.display = pygame.display.set_mode(
-            (self.jetson_config.pygame_display_width, self.jetson_config.pygame_display_height),
-            pygame.HWSURFACE | pygame.DOUBLEBUF
-        )
+        self.display = pygame.display.set_mode((self.jetson_config.pygame_display_width,
+                                                self.jetson_config.pygame_display_height),
+                                               pygame.HWSURFACE | pygame.DOUBLEBUF)
 
     def setup_jetson_vehicle(self):
         self.jetson_vehicle.add(JetsonCommandSender(), inputs=['throttle', 'steering'], threaded=True)
@@ -44,11 +45,11 @@ class JetsonRunner:
     def start_game_loop(self, use_manual_control=False):
         self.logger.info("Starting Game Loop")
         try:
+
             clock = pygame.time.Clock()
             should_continue = True
             while should_continue:
                 clock.tick_busy_loop(60)
-
                 # pass throttle and steering into the bridge
                 sensors_data, vehicle = self.convert_data()
                 # print("keyboard vehicle_control:", vc)
@@ -56,14 +57,14 @@ class JetsonRunner:
                 vehicle_control = VehicleControl()
                 if self.auto_pilot:
                     vehicle_control: VehicleControl = self.agent.run_step(sensors_data=sensors_data, vehicle=vehicle)
-
                 # manual control always take precedence
                 if use_manual_control:
                     should_continue, vehicle_control = self.update_pygame(clock=clock)
+                # self.logger.debug(f"Vehicle Control = [{vehicle_control}]")
                 # pass the output into sender to send it
                 self.jetson_vehicle.update_parts(new_throttle=vehicle_control.throttle,
                                                  new_steering=vehicle_control.steering)
-
+                # print()
         except KeyboardInterrupt:
             self.logger.info("Keyboard Interrupt detected. Safely quitting")
             self.jetson_vehicle.stop()
