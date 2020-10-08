@@ -87,10 +87,10 @@ void loop()
     //interrupts();
   }
 
-//    Serial.println();
-//    Serial.print(unChannel1In);
-//    Serial.print(",");
-//    Serial.print(unChannel2In);
+    Serial.println();
+    Serial.print(unChannel1In);
+    Serial.print(",");
+    Serial.print(unChannel2In);
 
 
   throttle_read = unChannel2In;
@@ -111,7 +111,7 @@ void loop()
     } else {
 
       // NEW REQUIRED FORMAT: "HANDSHAKE" "PWMTHROTTLE" "STEERINGIN"
-      // (neutral formatting): & 1500 1500
+      // (neutral formatting): & 1500 1500 \r
 
       byte size = Serial.readBytesUntil('\r',receivedData, 50); //reads serial data into buffer and times out after 100ms
       receivedData[size] = 0; //end of the string can be specified with a 0.

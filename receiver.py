@@ -1,7 +1,7 @@
 import socket
 import serial
 import struct
-
+import sys
 MOTOR_MAX = 1750;
 MOTOR_MIN = 800;
 MOTOR_NEUTRAL = 1500;
@@ -14,7 +14,10 @@ UDP_PORT = 7788
 
 class Receiver:
     def __init__(self, client_ip):
-        self.ser = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
+        if 'win' in sys.platform:
+            self.ser = serial.Serial('COM4', 115200, timeout=1, writeTimeout=1)
+        else:
+            self.ser = serial.Serial('/dev/ttyACM0', 115200, timeout=1, writeTimeout=1)
         self.old_steering = 0.0
         self.old_throttle = 0.0
         self.new_steering = 0.0
