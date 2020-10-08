@@ -35,7 +35,7 @@ class JetsonCommandSender:
         if servo_throttle_range is None:
             servo_throttle_range = [1300, 1700]
         if servo_steering_range is None:
-            servo_steering_range = [0, 3000]
+            servo_steering_range = [1000, 2000]
 
         if 'win' in sys.platform:
             self.ser = serial.Serial('COM4', 115200, timeout=1, writeTimeout=1)
@@ -51,9 +51,8 @@ class JetsonCommandSender:
         self.agent_steering_range = agent_steering_range
         self.servo_throttle_range = servo_throttle_range
         self.servo_steering_range = servo_steering_range
-
-
         self.logger = logging.getLogger("Jetson CMD Sender")
+        self.logger.debug("Jetson CMD Sender Initialized")
 
     def update(self):
         pass
