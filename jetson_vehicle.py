@@ -11,7 +11,7 @@ from threading import Thread
 from ROAR.ROAR_Jetson.jetson_cmd_sender import JetsonCommandSender
 import logging
 from ROAR.ROAR_Jetson.camera import RS_D435i
-from typing import Optional
+from typing import Optional, List
 import numpy as np
 
 
@@ -24,20 +24,24 @@ class Vehicle:
         self.front_rgb_img: Optional[np.ndarray] = None
         self.front_depth_img: Optional[np.ndarray] = None
 
-    def add(self, part, inputs=[], outputs=[],
-            threaded=False, run_condition=None):
+    def add(self, part, inputs: Optional[List] = None, outputs: Optional[List] = None,
+            threaded=False):
         """
         Method to add a part to the vehicle drive loop.
 
-        Parameters
-        ----------
-            inputs : list
-                Channel names to get from memory.
-            ouputs : list
-                Channel names to save to memory.
-            threaded : boolean
-                If a part should be run in a separate thread.
+        Args:
+            part: Generic object that has a run_threaded and update method
+            inputs: input to the parts
+            outputs: Channel names to save to memory.
+            threaded: If a part should be run in a separate thread.
+
+        Returns:
+            None
         """
+        if outputs is None:
+            outputs = []
+        if inputs is None:
+            inputs = []
         assert type(inputs) is list, "inputs is not a list: %r" % inputs
         assert type(outputs) is list, "outputs is not a list: %r" % outputs
         assert type(threaded) is bool, "threaded is not a boolean: %r" % threaded
@@ -48,7 +52,6 @@ class Vehicle:
         entry['part'] = p
         entry['inputs'] = inputs
         entry['outputs'] = outputs
-        entry['run_condition'] = run_condition
 
         if threaded:
             t = Thread(target=part.update, args=())
@@ -127,7 +130,7 @@ class Vehicle:
                 else:
                     self.logger.error(f"Unknown part [{p}]")
             except KeyboardInterrupt as e:
-                exit(0) # this is a hack for existing the program. DON"T CHANGE!
+                exit(0)  # this is a hack for existing the program. DON"T CHANGE!
             except Exception as e:
                 self.logger.error(f"Something bad happened during update for part [{entry}]: {e}")
 

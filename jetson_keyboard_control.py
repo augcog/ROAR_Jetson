@@ -20,7 +20,8 @@ class JetsonKeyboardControl(object):
             clock: pygame clock
 
         Returns:
-
+            Tuple bool, and vehicle control
+            boolean states whether quit is pressed. VehicleControl by default has throttle = 0, steering =
         """
         events = pygame.event.get()
         for event in events:
@@ -30,6 +31,15 @@ class JetsonKeyboardControl(object):
         return True, VehicleControl(throttle=self.throttle, steering=self.steering)
 
     def _parse_vehicle_keys(self, keys, milliseconds):
+        """
+        Parse a single key press and set the throttle & steering
+        Args:
+            keys: array of keys pressed. If pressed keys[PRESSED] = 1
+            milliseconds: miliseconds pressed
+
+        Returns:
+            None
+        """
         if keys[K_UP] or keys[K_w]:
             self.throttle = min(self.throttle + self._throttle_increment, 1)
 
