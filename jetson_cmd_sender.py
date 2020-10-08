@@ -1,4 +1,4 @@
-import serial
+from serial import Serial
 import logging
 import sys
 import time
@@ -17,7 +17,9 @@ class JetsonCommandSender:
     Responsible for translating Agent Throttle and Steering to Servo (motor on the race car) RPM and issue the command
     """
 
-    def __init__(self, min_command_time_gap: float = 0.1,
+    def __init__(self,
+                 serial: Serial,
+                 min_command_time_gap: float = 0.1,
                  agent_throttle_range: Optional[List] = None,
                  agent_steering_range: Optional[List] = None,
                  servo_throttle_range: Optional[List] = None,
@@ -33,14 +35,11 @@ class JetsonCommandSender:
         if agent_throttle_range is None:
             agent_throttle_range = [-1, 1]
         if servo_throttle_range is None:
-            servo_throttle_range = [1300, 1700]
+            servo_throttle_range = [MOTOR_MIN, MOTOR_MAX]
         if servo_steering_range is None:
-            servo_steering_range = [1000, 2000]
+            servo_steering_range = [THETA_MIN, THETA_MAX]
 
-        if 'win' in sys.platform:
-            self.ser = serial.Serial('COM4', 115200, timeout=1, writeTimeout=1)
-        else:
-            self.ser = serial.Serial('/dev/ttyACM0', 115200, timeout=1, writeTimeout=1)
+        self.serial = serial
 
         self.prev_throttle = 1500  # record previous throttle, set to neutral initially 
         self.prev_steering = 1500  # record previous steering, set to neutral initially
@@ -108,7 +107,7 @@ class JetsonCommandSender:
         if self.prev_throttle != new_throttle or self.prev_steering != new_steering:
             serial_msg = '& {} {}\r'.format(new_throttle, new_steering)
             self.logger.debug(f"Sending [{serial_msg.rstrip()}]")
-            self.ser.write(serial_msg.encode('ascii'))
+            self.serial.write(serial_msg.encode('ascii'))
             self.prev_throttle = new_throttle
             self.prev_steering = new_steering
 

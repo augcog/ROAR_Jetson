@@ -13,7 +13,7 @@ import logging
 from ROAR.ROAR_Jetson.camera import RS_D435i
 from typing import Optional, List
 import numpy as np
-
+from ROAR.ROAR_Jetson.receiver import Receiver
 
 class Vehicle:
     def __init__(self):
@@ -127,8 +127,10 @@ class Vehicle:
                     p.run_threaded(throttle=new_throttle, steering=new_steering)
                 elif entry.get('thread') and isinstance(p, RS_D435i):
                     self.front_rgb_img, self.front_depth_img = p.run_threaded()
+                elif isinstance(p, Receiver):
+                    p.run_threaded()
                 else:
-                    self.logger.error(f"Unknown part [{p}]")
+                    self.logger.warning(f"Unknown part [{p}]")
             except KeyboardInterrupt as e:
                 exit(0)  # this is a hack for existing the program. DON"T CHANGE!
             except Exception as e:

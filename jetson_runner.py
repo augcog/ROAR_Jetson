@@ -11,6 +11,9 @@ import pygame
 from ROAR.ROAR_Jetson.jetson_keyboard_control import JetsonKeyboardControl
 import numpy as np
 from ROAR.ROAR_Jetson.jetson_config import JetsonConfig
+from ROAR.ROAR_Jetson.receiver import Receiver
+import serial
+import sys
 
 
 class JetsonRunner:
@@ -28,6 +31,18 @@ class JetsonRunner:
         self.jetson_bridge = JetsonBridge()
         self.logger = logging.getLogger("Jetson Runner")
         self.display: Optional[pygame.display] = None
+
+        if 'win' in sys.platform:
+            self.serial = serial.Serial(port=self.jetson_config.win_serial_port,
+                                        baudrate=self.jetson_config.baud_rate,
+                                        timeout=self.jetson_config.arduino_timeout,
+                                        writeTimeout=self.jetson_config.write_timeout)
+        else:
+            self.serial = serial.Serial(port=self.jetson_config.unix_serial_port,
+                                        baudrate=self.jetson_config.baud_rate,
+                                        timeout=self.jetson_config.arduino_timeout,
+                                        writeTimeout=self.jetson_config.write_timeout)
+
         self.controller = JetsonKeyboardControl()
         if jetson_config.initiate_pygame:
             self.setup_pygame()
@@ -61,10 +76,16 @@ class JetsonRunner:
         Returns:
             None
         """
-        self.jetson_vehicle.add(JetsonCommandSender(), inputs=['throttle', 'steering'], threaded=True)
+        self.jetson_vehicle.add(JetsonCommandSender(serial=self.serial,
+                                                    servo_throttle_range=[self.jetson_config.motor_min,
+                                                                          self.jetson_config.motor_max],
+                                                    servo_steering_range=[self.jetson_config.theta_min,
+                                                                          self.jetson_config.theta_max]),
+                                inputs=['throttle', 'steering'], threaded=True)
         self.jetson_vehicle.add(RS_D435i(image_w=self.agent.front_rgb_camera.image_size_x,
                                          image_h=self.agent.front_rgb_camera.image_size_y,
                                          image_output=True), threaded=True)
+        self.jetson_vehicle.add(Receiver(serial=self.serial, client_ip=self.jetson_config.client_ip))
 
     def start_game_loop(self, use_manual_control=False):
         self.logger.info("Starting Game Loop")

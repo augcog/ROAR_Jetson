@@ -1,7 +1,10 @@
 import socket
-import serial
+from serial import Serial
 import struct
 import sys
+import logging
+from typing import Optional
+
 MOTOR_MAX = 1750;
 MOTOR_MIN = 800;
 MOTOR_NEUTRAL = 1500;
@@ -12,22 +15,30 @@ COMMAND_THROTTLE = 0
 COMMAND_STEERING = 1
 UDP_PORT = 7788
 
+
 class Receiver:
-    def __init__(self, client_ip):
-        if 'win' in sys.platform:
-            self.ser = serial.Serial('COM4', 115200, timeout=1, writeTimeout=1)
-        else:
-            self.ser = serial.Serial('/dev/ttyACM0', 115200, timeout=1, writeTimeout=1)
+    def __init__(self, client_ip: str, serial: Optional[Serial] = None):
+        self.serial = serial if serial is not None else self._create_serial()
         self.old_steering = 0.0
         self.old_throttle = 0.0
         self.new_steering = 0.0
         self.new_throttle = 0.0
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.client_ip = client_ip
+        self.logger = logging.getLogger("Arduino Receiver")
+        self.logger.debug("Receiver Initialized")
+
+    @staticmethod
+    def _create_serial():
+        if 'win' in sys.platform:
+            serial = Serial(port='COM4', baudrate=115200, timeout=1, writeTimeout=1)
+        else:
+            serial = Serial(port='/dev/ttyACM0', baudrate=115200, timeout=1, writeTimeout=1)
+        return serial
 
     def update(self):
         while True:
-            vel_wheel = self.ser.readline()
+            vel_wheel = self.serial.readline()
             vel_wheel = str(vel_wheel)
             vel_wheel = vel_wheel[2:][:-5]
             vel_wheel = vel_wheel.split()
@@ -37,6 +48,8 @@ class Receiver:
                 steering = float(steering)
             except:
                 continue
+            # TODO @ Yuri, you might want to re-do this part to match the jetson_cmd_sender
+            # https://github.com/augcog/ROAR_Jetson/blob/revamp/jetson_cmd_sender.py#L126
             if self.new_throttle >= MOTOR_NEUTRAL:
                 self.new_throttle = float(throttle - MOTOR_NEUTRAL) / (MOTOR_MAX - MOTOR_NEUTRAL)
             else:
