@@ -11,7 +11,7 @@ THETA_MAX = 3000
 THETA_MIN = 0
 
 
-class JetsonCommandSender:
+class ArduinoCommandSender:
     """
     Responsible for translating Agent Throttle and Steering to Servo (motor on the race car) RPM and issue the command
     """
