@@ -1,6 +1,5 @@
 from serial import Serial
 import logging
-import sys
 import time
 import numpy as np
 from typing import List, Tuple, Optional

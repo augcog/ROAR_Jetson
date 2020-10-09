@@ -1,7 +1,7 @@
 import pygame
 from pygame.locals import *
 import logging
-from ROAR.roar_autonomous_system.utilities_module.vehicle_models import VehicleControl
+from ROAR.utilities_module.vehicle_models import VehicleControl
 
 
 class JetsonKeyboardControl(object):

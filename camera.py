@@ -107,6 +107,8 @@ class RS_D435i(object):
         output_width, output_height, framerate, client_ip)
 
     def __init__(self, image_w=640, image_h=480, image_d=3, image_output=True, framerate=30, client_ip='127.0.0.1'):
+        self.logger = logging.getLogger("Intel RealSense D435i")
+        self.logger.debug("Initiating Intel Realsense")
         # Using the image_output will grab two image streams from the fisheye cameras but return only one.
         # This can be a bit much for USB2, but you can try it. Docs recommend USB3 connection for this.
         self.image_output = image_output
@@ -116,7 +118,6 @@ class RS_D435i(object):
         cfg = rs.config()
         cfg.enable_stream(rs.stream.gyro)
         cfg.enable_stream(rs.stream.accel)
-
         if self.image_output:
             cfg.enable_stream(rs.stream.color, image_w, image_h, rs.format.bgr8, framerate)  # color camera
 
@@ -129,7 +130,10 @@ class RS_D435i(object):
             cfg.enable_stream(rs.stream.depth, image_w, image_h, rs.format.z16, framerate)  # depth camera
 
         # Start streaming with requested config
-        self.pipe.start(cfg)
+        try:
+            self.pipe.start(cfg)
+        except Exception as e:
+            raise Exception(f"Error {e}. Maybe double check the configuration? Especailly the camera Width and Height")
         self.running = True
 
         zero_vec = (0.0, 0.0, 0.0)
@@ -137,7 +141,6 @@ class RS_D435i(object):
         self.acc = zero_vec
         self.img = None
         self.dimg = None
-        self.logger = logging.getLogger("Intel RealSense D435i")
         self.logger.info("Camera Initiated")
 
     def poll(self):

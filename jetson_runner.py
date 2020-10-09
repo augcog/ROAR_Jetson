@@ -1,17 +1,17 @@
-from ROAR.roar_autonomous_system.utilities_module.data_structures_models import SensorsData
-from ROAR.roar_autonomous_system.utilities_module.vehicle_models import Vehicle, VehicleControl
-from ROAR.ROAR_Jetson.jetson_vehicle import Vehicle as JetsonVehicle
+from ROAR.utilities_module.data_structures_models import SensorsData
+from ROAR.utilities_module.vehicle_models import Vehicle, VehicleControl
+from ROAR_Jetson.jetson_vehicle import Vehicle as JetsonVehicle
 from typing import Optional, Tuple
-from ROAR.ROAR_Jetson.jetson_cmd_sender import JetsonCommandSender
-from ROAR.roar_autonomous_system.agent_module.agent import Agent
-from ROAR.bridges.jetson_bridge import JetsonBridge
-from ROAR.ROAR_Jetson.camera import RS_D435i
+from ROAR_Jetson.jetson_cmd_sender import JetsonCommandSender
+from ROAR.agent_module.agent import Agent
+from Bridges.jetson_bridge import JetsonBridge
+from ROAR_Jetson.camera import RS_D435i
 import logging
 import pygame
-from ROAR.ROAR_Jetson.jetson_keyboard_control import JetsonKeyboardControl
+from ROAR_Jetson.jetson_keyboard_control import JetsonKeyboardControl
 import numpy as np
-from ROAR.ROAR_Jetson.jetson_config import JetsonConfig
-from ROAR.ROAR_Jetson.receiver import Receiver
+from ROAR_Jetson.configurations.configuration import Configuration as JetsonConfig
+from ROAR_Jetson.receiver import Receiver
 import serial
 import sys
 
@@ -31,7 +31,6 @@ class JetsonRunner:
         self.jetson_bridge = JetsonBridge()
         self.logger = logging.getLogger("Jetson Runner")
         self.display: Optional[pygame.display] = None
-
         if 'win' in sys.platform:
             self.serial = serial.Serial(port=self.jetson_config.win_serial_port,
                                         baudrate=self.jetson_config.baud_rate,
@@ -50,6 +49,7 @@ class JetsonRunner:
         self.auto_pilot = True
         self.pygame_initiated = False
         self.logger.info("Jetson Vehicle Connected and Intialized")
+        self.logger.debug("All Hardware is online")
 
     def setup_pygame(self):
         """
@@ -69,6 +69,7 @@ class JetsonRunner:
                                                     self.jetson_config.pygame_display_height),
                                                    pygame.HWSURFACE | pygame.DOUBLEBUF)
         self.pygame_initiated = True
+        self.logger.debug("PyGame initiated")
 
     def setup_jetson_vehicle(self):
         """

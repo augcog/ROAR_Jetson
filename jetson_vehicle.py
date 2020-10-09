@@ -8,12 +8,12 @@ Created on Sun Jun 25 10:44:24 2017
 
 import time
 from threading import Thread
-from ROAR.ROAR_Jetson.jetson_cmd_sender import JetsonCommandSender
+from ROAR_Jetson.jetson_cmd_sender import JetsonCommandSender
 import logging
-from ROAR.ROAR_Jetson.camera import RS_D435i
+from ROAR_Jetson.camera import RS_D435i
 from typing import Optional, List
 import numpy as np
-from ROAR.ROAR_Jetson.receiver import Receiver
+from ROAR_Jetson.receiver import Receiver
 
 class Vehicle:
     def __init__(self):
@@ -59,6 +59,7 @@ class Vehicle:
             entry['thread'] = t
 
         self.parts.append(entry)
+        self.logger.debug(f"{p.__class__.__name__} successfully added")
 
     def remove(self, part):
         """
