@@ -14,6 +14,7 @@ from ROAR_Jetson.camera import RS_D435i
 from typing import Optional, List
 import numpy as np
 from ROAR_Jetson.receiver import Receiver
+from ROAR_Jetson.ar_marker_localization import Localization as ARMarkerLocalization
 
 class Vehicle:
     def __init__(self):
@@ -129,6 +130,8 @@ class Vehicle:
                 elif entry.get('thread') and isinstance(p, RS_D435i):
                     self.front_rgb_img, self.front_depth_img = p.run_threaded()
                 elif isinstance(p, Receiver):
+                    p.run_threaded()
+                elif isinstance(p, ARMarkerLocalization):
                     p.run_threaded()
                 else:
                     self.logger.warning(f"Unknown part [{p}]")

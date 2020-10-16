@@ -14,6 +14,8 @@ from ROAR_Jetson.configurations.configuration import Configuration as JetsonConf
 from ROAR_Jetson.receiver import Receiver
 import serial
 import sys
+from ROAR_Jetson.ar_marker_localization import Localization as ARMarkerLocalization
+from pathlib import Path
 
 
 class JetsonRunner:
@@ -34,6 +36,9 @@ class JetsonRunner:
         self.serial: Optional[serial.Serial] = None
 
         self.controller = JetsonKeyboardControl()
+
+        self.ar_marker_localization: Optional[ARMarkerLocalization] = None
+
         if jetson_config.initiate_pygame:
             self.setup_pygame()
         self.setup_serial()
@@ -103,6 +108,16 @@ class JetsonRunner:
                                              image_output=True), threaded=True)
         except Exception as e:
             self.logger.error(f"Unable to connect to Intel Realsense: {e}")
+
+        try:
+            self.ar_marker_localization = ARMarkerLocalization(agent=self.agent,
+                                                               distortion_coeffs=2,  # TODO Cao Xinyun, fix distrotion coefficient
+                                                               json_in=Path(
+                                                                   "./ROAR_Jetson/data/track_1.json").as_posix())
+            self.jetson_vehicle.add(self.ar_marker_localization,
+                                    threaded=True)
+        except Exception as e:
+            self.logger.error(f"Unable to initialize Localization service: {e}")
 
     def start_game_loop(self, use_manual_control=False):
         self.logger.info("Starting Game Loop")

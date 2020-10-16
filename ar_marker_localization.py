@@ -7,16 +7,17 @@ import numpy as np
 import cv2
 from scipy.spatial.transform import Rotation as R
 from scipy.spatial.transform import Slerp
-
+from ROAR.agent_module.agent import Agent
 
 class Localization(object):
     '''
     allow for the car to locate its global positioning
     '''
 
-    def __init__(self, camera_matrix, distortion_coeffs, json_in):
+    def __init__(self, agent: Agent, distortion_coeffs, json_in):
 
         # Parse the json to get the map
+        self.agent: Agent = agent
         self.json_in_path = json_in
         content = open(self.json_in_path)
         self.json_in = json.loads(content.read())
@@ -25,7 +26,7 @@ class Localization(object):
         self.ar_configs = {}
 
         # Set the Camera Matrix/Distortion Coefficients, initiallize other variables
-        self.camera_matrix = camera_matrix
+        self.camera_matrix = self.agent.front_rgb_camera.intrinsics_matrix
         self.camera_matrix_inv = np.linalg.pinv(self.camera_matrix)
         self.distortion_coeffs = distortion_coeffs
         self.aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
@@ -126,16 +127,20 @@ class Localization(object):
             return positions_list
         return None
 
-    def run_threaded(self, img_arr=None, depth_arr=None):
+    def run_threaded(self):
         """
         Compute the configuration of the car
         """
+        img_arr = None if self.agent.front_rgb_camera.data is None else self.agent.front_rgb_camera.data.copy()
+        depth_arr = None if self.agent.front_depth_camera.data is None else self.agent.front_depth_camera.data.copy()
+
         if type(img_arr) == np.ndarray:
             if not img_arr.size:
                 return None, False
         else:
             return None, False
-
+        cv2.imshow("img from ar marker localization", img_arr)
+        cv2.waitKey(1)
         # Copy image then convert it to grayscale
         img_arr = img_arr.copy()
         if len(img_arr) == 3:
