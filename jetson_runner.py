@@ -2,7 +2,9 @@ from ROAR.utilities_module.data_structures_models import SensorsData
 from ROAR.utilities_module.vehicle_models import Vehicle, VehicleControl
 from ROAR_Jetson.jetson_vehicle import Vehicle as JetsonVehicle
 from typing import Optional, Tuple
-from ROAR_Jetson.jetson_cmd_sender import ArduinoCommandSender
+
+from ROAR_Jetson.arduino_cmd_sender import ArduinoCommandSender
+
 from ROAR.agent_module.agent import Agent
 from Bridges.jetson_bridge import JetsonBridge
 from ROAR_Jetson.camera import RS_D435i
@@ -11,7 +13,7 @@ import pygame
 from ROAR_Jetson.jetson_keyboard_control import JetsonKeyboardControl
 import numpy as np
 from ROAR_Jetson.configurations.configuration import Configuration as JetsonConfig
-from ROAR_Jetson.receiver import Receiver
+from ROAR_Jetson.arduino_receiver import ArduinoReceiver
 import serial
 import sys
 from ROAR_Jetson.ar_marker_localization import Localization as ARMarkerLocalization
@@ -45,8 +47,7 @@ class JetsonRunner:
         self.setup_jetson_vehicle()
         self.auto_pilot = True
         self.pygame_initiated = False
-        self.logger.info("Jetson Vehicle Connected and Intialized")
-        self.logger.debug("All Hardware is online")
+        self.logger.info("Jetson Vehicle Connected and Intialized. All Hardware is online and running")
 
     def setup_pygame(self):
         """
@@ -89,6 +90,7 @@ class JetsonRunner:
         Returns:
             None
         """
+
         try:
             self.jetson_vehicle.add(ArduinoCommandSender(serial=self.serial,
                                                          servo_throttle_range=[self.jetson_config.motor_min,
@@ -99,7 +101,7 @@ class JetsonRunner:
         except Exception as e:
             self.logger.error(f"Ignoring Error during ArduinoCommandSender set up: {e}")
         try:
-            self.jetson_vehicle.add(Receiver(serial=self.serial, client_ip=self.jetson_config.client_ip))
+            self.jetson_vehicle.add(ArduinoReceiver(serial=self.serial, client_ip=self.jetson_config.client_ip))
         except Exception as e:
             self.logger.error(f"Ignoring Error during ArduinoReceiver setup: {e}")
         try:
@@ -119,10 +121,11 @@ class JetsonRunner:
         except Exception as e:
             self.logger.error(f"Unable to initialize Localization service: {e}")
 
+
     def start_game_loop(self, use_manual_control=False):
         self.logger.info("Starting Game Loop")
         try:
-
+            self.jetson_vehicle.start_part_threads()
             clock = pygame.time.Clock()
             should_continue = True
             while should_continue:

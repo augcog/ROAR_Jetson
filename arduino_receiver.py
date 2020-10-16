@@ -16,7 +16,7 @@ COMMAND_STEERING = 1
 UDP_PORT = 7788
 
 
-class Receiver:
+class ArduinoReceiver:
     def __init__(self, client_ip: str, serial: Optional[Serial] = None):
         self.serial = serial if serial is not None else self._create_serial()
         self.old_steering = 0.0
@@ -40,6 +40,7 @@ class Receiver:
         while True:
             vel_wheel = self.serial.readline()
             vel_wheel = str(vel_wheel)
+            self.logger.info(vel_wheel)
             vel_wheel = vel_wheel[2:][:-5]
             vel_wheel = vel_wheel.split()
             try:

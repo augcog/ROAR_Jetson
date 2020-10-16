@@ -8,13 +8,14 @@ Created on Sun Jun 25 10:44:24 2017
 
 import time
 from threading import Thread
-from ROAR_Jetson.jetson_cmd_sender import ArduinoCommandSender
+from ROAR_Jetson.arduino_cmd_sender import ArduinoCommandSender
 import logging
 from ROAR_Jetson.camera import RS_D435i
 from typing import Optional, List
 import numpy as np
-from ROAR_Jetson.receiver import Receiver
 from ROAR_Jetson.ar_marker_localization import Localization as ARMarkerLocalization
+from ROAR_Jetson.arduino_receiver import ArduinoReceiver
+
 
 class Vehicle:
     def __init__(self):
@@ -109,6 +110,14 @@ class Vehicle:
         finally:
             self.stop()
 
+    def start_part_threads(self):
+        for entry in self.parts:
+            if entry.get('thread'):
+                # start the update thread
+                p = entry.get('part')
+                entry.get('thread').start()
+                self.logger.debug(f"{p.__class__.__name__} thread started")
+
     def update_parts(self, new_throttle: float = 0, new_steering: float = 0):
         """
         Fail-safe method for loop over all parts and call update on each one
@@ -129,7 +138,7 @@ class Vehicle:
                     p.run_threaded(throttle=new_throttle, steering=new_steering)
                 elif entry.get('thread') and isinstance(p, RS_D435i):
                     self.front_rgb_img, self.front_depth_img = p.run_threaded()
-                elif isinstance(p, Receiver):
+                elif isinstance(p, ArduinoReceiver):
                     p.run_threaded()
                 elif isinstance(p, ARMarkerLocalization):
                     p.run_threaded()
