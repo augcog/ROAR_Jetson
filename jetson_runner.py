@@ -2,7 +2,7 @@ from ROAR.utilities_module.data_structures_models import SensorsData
 from ROAR.utilities_module.vehicle_models import Vehicle, VehicleControl
 from ROAR_Jetson.jetson_vehicle import Vehicle as JetsonVehicle
 from typing import Optional, Tuple
-from ROAR_Jetson.jetson_cmd_sender import JetsonCommandSender
+from ROAR_Jetson.jetson_cmd_sender import ArduinoCommandSender
 from ROAR.agent_module.agent import Agent
 from Bridges.jetson_bridge import JetsonBridge
 from ROAR_Jetson.camera import RS_D435i
@@ -31,20 +31,12 @@ class JetsonRunner:
         self.jetson_bridge = JetsonBridge()
         self.logger = logging.getLogger("Jetson Runner")
         self.display: Optional[pygame.display] = None
-        if 'win' in sys.platform:
-            self.serial = serial.Serial(port=self.jetson_config.win_serial_port,
-                                        baudrate=self.jetson_config.baud_rate,
-                                        timeout=self.jetson_config.arduino_timeout,
-                                        writeTimeout=self.jetson_config.write_timeout)
-        else:
-            self.serial = serial.Serial(port=self.jetson_config.unix_serial_port,
-                                        baudrate=self.jetson_config.baud_rate,
-                                        timeout=self.jetson_config.arduino_timeout,
-                                        writeTimeout=self.jetson_config.write_timeout)
+        self.serial: Optional[serial.Serial] = None
 
         self.controller = JetsonKeyboardControl()
         if jetson_config.initiate_pygame:
             self.setup_pygame()
+        self.setup_serial()
         self.setup_jetson_vehicle()
         self.auto_pilot = True
         self.pygame_initiated = False
@@ -71,22 +63,46 @@ class JetsonRunner:
         self.pygame_initiated = True
         self.logger.debug("PyGame initiated")
 
+    def setup_serial(self):
+        try:
+            if 'win' in sys.platform:
+                self.serial = serial.Serial(port=self.jetson_config.win_serial_port,
+                                            baudrate=self.jetson_config.baud_rate,
+                                            timeout=self.jetson_config.arduino_timeout,
+                                            writeTimeout=self.jetson_config.write_timeout)
+            else:
+                self.serial = serial.Serial(port=self.jetson_config.unix_serial_port,
+                                            baudrate=self.jetson_config.baud_rate,
+                                            timeout=self.jetson_config.arduino_timeout,
+                                            writeTimeout=self.jetson_config.write_timeout)
+        except Exception as e:
+            self.logger.error(f"Unable to establish serial connection: {e}")
+
     def setup_jetson_vehicle(self):
         """
         Add component to JetsonVehicle instance
         Returns:
             None
         """
-        self.jetson_vehicle.add(JetsonCommandSender(serial=self.serial,
-                                                    servo_throttle_range=[self.jetson_config.motor_min,
-                                                                          self.jetson_config.motor_max],
-                                                    servo_steering_range=[self.jetson_config.theta_min,
-                                                                          self.jetson_config.theta_max]),
-                                inputs=['throttle', 'steering'], threaded=True)
-        self.jetson_vehicle.add(RS_D435i(image_w=self.agent.front_rgb_camera.image_size_x,
-                                         image_h=self.agent.front_rgb_camera.image_size_y,
-                                         image_output=True), threaded=True)
-        self.jetson_vehicle.add(Receiver(serial=self.serial, client_ip=self.jetson_config.client_ip))
+        try:
+            self.jetson_vehicle.add(ArduinoCommandSender(serial=self.serial,
+                                                         servo_throttle_range=[self.jetson_config.motor_min,
+                                                                               self.jetson_config.motor_max],
+                                                         servo_steering_range=[self.jetson_config.theta_min,
+                                                                               self.jetson_config.theta_max]),
+                                    inputs=['throttle', 'steering'], threaded=True)
+        except Exception as e:
+            self.logger.error(f"Ignoring Error during ArduinoCommandSender set up: {e}")
+        try:
+            self.jetson_vehicle.add(Receiver(serial=self.serial, client_ip=self.jetson_config.client_ip))
+        except Exception as e:
+            self.logger.error(f"Ignoring Error during ArduinoReceiver setup: {e}")
+        try:
+            self.jetson_vehicle.add(RS_D435i(image_w=self.agent.front_rgb_camera.image_size_x,
+                                             image_h=self.agent.front_rgb_camera.image_size_y,
+                                             image_output=True), threaded=True)
+        except Exception as e:
+            self.logger.error(f"Unable to connect to Intel Realsense: {e}")
 
     def start_game_loop(self, use_manual_control=False):
         self.logger.info("Starting Game Loop")

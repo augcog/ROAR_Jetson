@@ -8,7 +8,7 @@ Created on Sun Jun 25 10:44:24 2017
 
 import time
 from threading import Thread
-from ROAR_Jetson.jetson_cmd_sender import JetsonCommandSender
+from ROAR_Jetson.jetson_cmd_sender import ArduinoCommandSender
 import logging
 from ROAR_Jetson.camera import RS_D435i
 from typing import Optional, List
@@ -123,7 +123,7 @@ class Vehicle:
         for entry in self.parts:
             try:
                 p = entry["part"]
-                if entry.get('thread') and isinstance(p, JetsonCommandSender):
+                if entry.get('thread') and isinstance(p, ArduinoCommandSender):
                     # send the throttle and steering to Arduino
                     p.run_threaded(throttle=new_throttle, steering=new_steering)
                 elif entry.get('thread') and isinstance(p, RS_D435i):
