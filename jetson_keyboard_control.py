@@ -24,10 +24,11 @@ class JetsonKeyboardControl(object):
             boolean states whether quit is pressed. VehicleControl by default has throttle = 0, steering =
         """
         events = pygame.event.get()
+        key_pressed = pygame.key.get_pressed()
         for event in events:
-            if event.type == pygame.QUIT:
+            if event.type == pygame.QUIT or key_pressed[K_q] or key_pressed[K_ESCAPE]:
                 return False, VehicleControl()
-        self._parse_vehicle_keys(pygame.key.get_pressed(), clock.get_time())
+        self._parse_vehicle_keys(key_pressed, clock.get_time())
         return True, VehicleControl(throttle=self.throttle, steering=self.steering)
 
     def _parse_vehicle_keys(self, keys, milliseconds):

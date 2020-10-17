@@ -6,6 +6,7 @@ from PIL import Image
 import glob
 import logging
 import pyrealsense2 as rs
+from typing import Optional
 
 
 class BaseCamera:
@@ -27,7 +28,7 @@ class CSICamera(BaseCamera):
 
     def gstreamer_pipelineout(self, output_width=1280, output_height=720, framerate=21, client_ip='127.0.0.1'):
         return 'appsrc ! videoconvert ! video/x-raw, format=(string)BGRx, width=%d, height=%d, framerate=(fraction)%d/1 ! videoconvert ! video/x-raw, format=(string)I420 ! omxh264enc tune=zerolatency bitrate=8000000 speed-preset=ultrafast ! video/x-h264, stream-format=byte-stream ! rtph264pay mtu=1400 ! udpsink host=%s port=5000 sync=false async=false' % (
-        output_width, output_height, framerate, client_ip)
+            output_width, output_height, framerate, client_ip)
 
     def __init__(self, image_w=160, image_h=120, image_d=3, capture_width=640, capture_height=480, framerate=60,
                  gstreamer_flip=0, client_ip='127.0.0.1'):
@@ -104,7 +105,7 @@ class RS_D435i(object):
 
     def gstreamer_pipelineout(self, output_width=1280, output_height=720, framerate=21, client_ip='127.0.0.1'):
         return 'appsrc ! videoconvert ! video/x-raw, format=(string)BGRx, width=%d, height=%d, framerate=(fraction)%d/1 ! videoconvert ! video/x-raw, format=(string)I420 ! omxh264enc tune=zerolatency bitrate=8000000 speed-preset=ultrafast ! video/x-h264, stream-format=byte-stream ! rtph264pay mtu=1400 ! udpsink host=%s port=5001 sync=false async=false' % (
-        output_width, output_height, framerate, client_ip)
+            output_width, output_height, framerate, client_ip)
 
     def __init__(self, image_w=640, image_h=480, image_d=3, image_output=True, framerate=30, client_ip='127.0.0.1'):
         self.logger = logging.getLogger("Intel RealSense D435i")
@@ -113,6 +114,10 @@ class RS_D435i(object):
         # This can be a bit much for USB2, but you can try it. Docs recommend USB3 connection for this.
         self.image_output = image_output
         self.client_ip = client_ip
+        self.depth_camera_intrinsics: Optional[np.ndarray] = None
+        self.rgb_camera_intrinsics: Optional[np.ndarray] = None
+        self.depth_camera_distortion_coefficients: Optional[np.ndarray] = None
+        self.rgb_camera_distortion_coefficients: Optional[np.ndarray] = None
         # Declare RealSense pipeline, encapsulating the actual device and sensors
         self.pipe = rs.pipeline()
         cfg = rs.config()
@@ -152,10 +157,24 @@ class RS_D435i(object):
 
         if self.image_output:
             color_frame = frames.get_color_frame()
-
             depth_frame = frames.get_depth_frame()
             self.img = np.asanyarray(color_frame.get_data())
             self.dimg = np.asanyarray(depth_frame.get_data())
+            if self.depth_camera_intrinsics is None:
+                intrinsics = depth_frame.profile.as_video_stream_profile().intrinsics
+                self._set_depth_camera_specs(fx=intrinsics.fx,
+                                             fy=intrinsics.fy,
+                                             cx=intrinsics.ppx,
+                                             cy=intrinsics.ppy,
+                                             distortion_coefficient=intrinsics.coeffs)
+            if self.rgb_camera_intrinsics is None:
+                intrinsics = color_frame.profile.as_video_stream_profile().intrinsics
+                self._set_rgb_camera_specs(fx=intrinsics.fx,
+                                           fy=intrinsics.fy,
+                                           cx=intrinsics.ppx,
+                                           cy=intrinsics.ppy,
+                                           distortion_coefficient=intrinsics.coeffs)
+
             self.out_send.write(self.img)
 
         # Fetch IMU frame
@@ -174,6 +193,7 @@ class RS_D435i(object):
     def run_threaded(self):
         try:
             self.poll()
+
             return self.img, self.dimg
         except KeyboardInterrupt as e:
             raise e
@@ -189,3 +209,19 @@ class RS_D435i(object):
         self.running = False
         time.sleep(0.1)
         self.pipe.stop()
+
+    def _set_depth_camera_specs(self, fx: int, fy: int, cx: int, cy: int, distortion_coefficient: np.ndarray):
+        self.depth_camera_intrinsics = np.array([
+            [fx, 0, cx],
+            [0, fy, cy],
+            [0, 0, 1]
+        ])
+        self.depth_camera_distortion_coefficients = distortion_coefficient
+
+    def _set_rgb_camera_specs(self, fx: int, fy: int, cx: int, cy: int, distortion_coefficient: np.ndarray):
+        self.rgb_camera_intrinsics = np.array([
+            [fx, 0, cx],
+            [0, fy, cy],
+            [0, 0, 1]
+        ])
+        self.rgb_camera_distortion_coefficients = distortion_coefficient

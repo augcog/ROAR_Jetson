@@ -8,27 +8,30 @@ import cv2
 from scipy.spatial.transform import Rotation as R
 from scipy.spatial.transform import Slerp
 from ROAR.agent_module.agent import Agent
+from pathlib import Path
+
 
 class Localization(object):
-    '''
+    """
     allow for the car to locate its global positioning
-    '''
+    """
 
-    def __init__(self, agent: Agent, distortion_coeffs, json_in):
+    def __init__(self, agent: Agent):
+        """
+
+        Args:
+            agent: ROAR Agent instance
+            json_in: pathlib.Path instance
+        """
 
         # Parse the json to get the map
-        self.agent: Agent = agent
-        self.json_in_path = json_in
-        content = open(self.json_in_path)
+        self.json_in_path: Path = Path(agent.agent_settings.json_qr_code_file_path)
+        content = self.json_in_path.open('r')
         self.json_in = json.loads(content.read())
         self.map = self.json_in["Segments"]
         self.ar_tags = self.json_in["AR tags"]
         self.ar_configs = {}
 
-        # Set the Camera Matrix/Distortion Coefficients, initiallize other variables
-        self.camera_matrix = self.agent.front_rgb_camera.intrinsics_matrix
-        self.camera_matrix_inv = np.linalg.pinv(self.camera_matrix)
-        self.distortion_coeffs = distortion_coeffs
         self.aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
 
         # Store the latest useful graysacle image and depth information
@@ -96,8 +99,9 @@ class Localization(object):
         if np.all(ids != None):
             valid_ids = True
             # Get rvec and tvec of each id relative to detected ar tags
-            rvecs, tvecs, _ = aruco.estimatePoseSingleMarkers(corners, 0.2032, self.camera_matrix,
-                                                              self.distortion_coeffs)
+            rvecs, tvecs, _ = aruco.estimatePoseSingleMarkers(corners, 0.2032,
+                                                              self.agent.front_rgb_camera.intrinsics_matrix,
+                                                              self.agent.front_rgb_camera.distortion_coefficient)
 
             config_list, dists = [], []
             for i, val in enumerate(ids):
@@ -269,8 +273,8 @@ class Localization(object):
         current_depth = np.diag(cur_depth[cur_2d[1].astype(int), cur_2d[0].astype(int)])
         previous_depth = np.diag(self.prev_depth[prev_2d[1].astype(int), prev_2d[0].astype(int)])
 
-        return (self.camera_matrix_inv @ (cur_2d) @ current_depth).T, (
-                    self.camera_matrix_inv @ (prev_2d) @ previous_depth).T
+        return (np.linalg.pinv(self.agent.front_depth_camera.intrinsics_matrix) @ cur_2d @ current_depth).T, (
+                self.agent.front_depth_camera.intrinsics_matrix @ prev_2d @ previous_depth).T
 
     def get_rigid_transformation3d(self, A, B):
         """

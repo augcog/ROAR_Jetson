@@ -40,11 +40,13 @@ class JetsonRunner:
         self.controller = JetsonKeyboardControl()
 
         self.ar_marker_localization: Optional[ARMarkerLocalization] = None
+        self.rs_d435i: Optional[RS_D435i] = None
 
         if jetson_config.initiate_pygame:
             self.setup_pygame()
         self.setup_serial()
         self.setup_jetson_vehicle()
+
         self.auto_pilot = True
         self.pygame_initiated = False
         self.logger.info("Jetson Vehicle Connected and Intialized. All Hardware is online and running")
@@ -105,31 +107,33 @@ class JetsonRunner:
         except Exception as e:
             self.logger.error(f"Ignoring Error during ArduinoReceiver setup: {e}")
         try:
-            self.jetson_vehicle.add(RS_D435i(image_w=self.agent.front_rgb_camera.image_size_x,
-                                             image_h=self.agent.front_rgb_camera.image_size_y,
-                                             image_output=True), threaded=True)
+            self.rs_d435i = RS_D435i(image_w=self.agent.front_rgb_camera.image_size_x,
+                                     image_h=self.agent.front_rgb_camera.image_size_y,
+                                     image_output=True)
+            self.jetson_vehicle.add(self.rs_d435i, threaded=True)
         except Exception as e:
             self.logger.error(f"Unable to connect to Intel Realsense: {e}")
 
         try:
-            self.ar_marker_localization = ARMarkerLocalization(agent=self.agent,
-                                                               distortion_coeffs=2,  # TODO Cao Xinyun, fix distrotion coefficient
-                                                               json_in=Path(
-                                                                   "./ROAR_Jetson/data/track_1.json").as_posix())
+            self.ar_marker_localization = ARMarkerLocalization(agent=self.agent)
             self.jetson_vehicle.add(self.ar_marker_localization,
                                     threaded=True)
         except Exception as e:
             self.logger.error(f"Unable to initialize Localization service: {e}")
 
-
     def start_game_loop(self, use_manual_control=False):
         self.logger.info("Starting Game Loop")
         try:
             self.jetson_vehicle.start_part_threads()
+
             clock = pygame.time.Clock()
             should_continue = True
             while should_continue:
                 clock.tick_busy_loop(60)
+
+                # assign intrinsics matrix as soon as it arrives
+                self._assign_camera_intrinsics()
+
                 # pass throttle and steering into the bridge
                 sensors_data, vehicle = self.convert_data()
 
@@ -137,6 +141,7 @@ class JetsonRunner:
                 vehicle_control = VehicleControl()
                 if self.auto_pilot:
                     vehicle_control: VehicleControl = self.agent.run_step(sensors_data=sensors_data, vehicle=vehicle)
+
                 # manual control always take precedence
                 if use_manual_control:
                     should_continue, vehicle_control = self.update_pygame(clock=clock)
@@ -187,3 +192,11 @@ class JetsonRunner:
             self.display.blit(surface, (0, 0))
         pygame.display.flip()
         return should_continue, vehicle_control
+
+    def _assign_camera_intrinsics(self):
+        if self.rs_d435i.depth_camera_intrinsics is not None:
+            self.agent.front_depth_camera.intrinsics_matrix = self.rs_d435i.depth_camera_intrinsics
+            self.agent.front_depth_camera.distortion_coefficient = self.rs_d435i.depth_camera_distortion_coefficients
+        if self.rs_d435i.rgb_camera_intrinsics is not None:
+            self.agent.front_rgb_camera.intrinsics_matrix = self.rs_d435i.rgb_camera_intrinsics
+            self.agent.front_rgb_camera.distortion_coefficient = self.rs_d435i.rgb_camera_distortion_coefficients
