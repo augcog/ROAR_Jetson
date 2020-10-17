@@ -16,7 +16,6 @@ from ROAR_Jetson.configurations.configuration import Configuration as JetsonConf
 from ROAR_Jetson.arduino_receiver import ArduinoReceiver
 import serial
 import sys
-from ROAR_Jetson.ar_marker_localization import Localization as ARMarkerLocalization
 from pathlib import Path
 
 
@@ -38,8 +37,6 @@ class JetsonRunner:
         self.serial: Optional[serial.Serial] = None
 
         self.controller = JetsonKeyboardControl()
-
-        self.ar_marker_localization: Optional[ARMarkerLocalization] = None
         self.rs_d435i: Optional[RS_D435i] = None
 
         if jetson_config.initiate_pygame:
