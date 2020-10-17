@@ -98,10 +98,11 @@ class CSICamera(BaseCamera):
 
 
 class RS_D435i(object):
-    '''
-    Intel RealSense depth camera D435i combines the robust depth sensing capabilities of the D435 with the addition of an inertial measurement unit (IMU).
+    """
+    Intel RealSense depth camera D435i combines the robust depth sensing capabilities of the D435 with the addition of
+    an inertial measurement unit (IMU).
     ref: https://www.intelrealsense.com/depth-camera-d435i/
-    '''
+    """
 
     def gstreamer_pipelineout(self, output_width=1280, output_height=720, framerate=21, client_ip='127.0.0.1'):
         return 'appsrc ! videoconvert ! video/x-raw, format=(string)BGRx, width=%d, height=%d, framerate=(fraction)%d/1 ! videoconvert ! video/x-raw, format=(string)I420 ! omxh264enc tune=zerolatency bitrate=8000000 speed-preset=ultrafast ! video/x-h264, stream-format=byte-stream ! rtph264pay mtu=1400 ! udpsink host=%s port=5001 sync=false async=false' % (
@@ -193,7 +194,6 @@ class RS_D435i(object):
     def run_threaded(self):
         try:
             self.poll()
-
             return self.img, self.dimg
         except KeyboardInterrupt as e:
             raise e

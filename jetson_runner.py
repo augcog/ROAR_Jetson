@@ -114,18 +114,18 @@ class JetsonRunner:
         except Exception as e:
             self.logger.error(f"Unable to connect to Intel Realsense: {e}")
 
-        try:
-            self.ar_marker_localization = ARMarkerLocalization(agent=self.agent)
-            self.jetson_vehicle.add(self.ar_marker_localization,
-                                    threaded=True)
-        except Exception as e:
-            self.logger.error(f"Unable to initialize Localization service: {e}")
+        # try:
+        #     self.ar_marker_localization = ARMarkerLocalization(agent=self.agent)
+        #     self.jetson_vehicle.add(self.ar_marker_localization,
+        #                             threaded=True)
+        # except Exception as e:
+        #     self.logger.error(f"Unable to initialize Localization service: {e}")
 
     def start_game_loop(self, use_manual_control=False):
         self.logger.info("Starting Game Loop")
         try:
             self.jetson_vehicle.start_part_threads()
-
+            self.agent.start_module_threads()
             clock = pygame.time.Clock()
             should_continue = True
             while should_continue:
@@ -155,7 +155,11 @@ class JetsonRunner:
         except Exception as e:
             self.logger.error(f"Something bad happened: [{e}]")
         finally:
-            self.jetson_vehicle.stop()
+            self.on_finish()
+
+    def on_finish(self):
+        self.jetson_vehicle.stop()
+        self.agent.shutdown_module_threads()
 
     def convert_data(self) -> Tuple[SensorsData, Vehicle]:
         """

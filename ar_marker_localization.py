@@ -27,6 +27,7 @@ class Localization(object):
         # Parse the json to get the map
         self.json_in_path: Path = Path(agent.agent_settings.json_qr_code_file_path)
         content = self.json_in_path.open('r')
+        self.agent = agent
         self.json_in = json.loads(content.read())
         self.map = self.json_in["Segments"]
         self.ar_tags = self.json_in["AR tags"]
@@ -84,7 +85,7 @@ class Localization(object):
         return np.array([x, y, z, roll, pitch, yaw])
 
     def update(self):
-        return
+        pass
 
     def get_position_list(self, gray=None):  # Get list of all global positions based on each ar tag in the frame
         """
@@ -155,7 +156,7 @@ class Localization(object):
         # Get the position list from the gray scale image, if there are ar tags
         positions_list = self.get_position_list(gray)
 
-        if (positions_list != None):
+        if positions_list is not None:
             # Average out the ar tag positions based on a weighted average
             self.prev_config = np.array(self.avg_RT(positions_list))
             self.prev_gray, self.prev_depth = gray, depth_arr
@@ -187,9 +188,9 @@ class Localization(object):
         :param positions: a list of [config matrix, dist]
         :return: the weighted average
         """
-        if (not positions):
+        if not positions:
             return positions
-        if (len(positions) == 1):
+        if len(positions) == 1:
             return positions[0][0]
 
         # Initialize weights = 1/distance for the interpolation

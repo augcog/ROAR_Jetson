@@ -16,7 +16,6 @@ import numpy as np
 from ROAR_Jetson.ar_marker_localization import Localization as ARMarkerLocalization
 from ROAR_Jetson.arduino_receiver import ArduinoReceiver
 
-
 class Vehicle:
     def __init__(self):
         self.parts = []
@@ -147,7 +146,7 @@ class Vehicle:
             except KeyboardInterrupt as e:
                 exit(0)  # this is a hack for existing the program. DON"T CHANGE!
             except Exception as e:
-                self.logger.error(f"Something bad happened during update for part [{entry}]: {e}")
+                self.logger.error(f"Something bad happened during run_threaded for part [{entry}]: {e}")
 
     def stop(self):
         """
