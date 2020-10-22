@@ -21,5 +21,9 @@ class Configuration(BaseModel):
     command_steering: int = Field(default=1)
     upd_port: int = Field(default=7788)
 
+    vive_tracker_host: str = Field(default="127.0.0.1")
+    vive_tracker_port: int = Field(default=8000)
+    vive_tracker_name: str = Field(default="Tracker")
+
 
 
