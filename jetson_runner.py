@@ -60,7 +60,7 @@ class JetsonRunner:
         if platform.architecture()[1] == "ELF":
             self.display = pygame.display.set_mode((self.jetson_config.pygame_display_width,
                                                     self.jetson_config.pygame_display_height),
-                                                   pygame.OPENGL)
+                                                   pygame.OPENGLBLIT)
         else:
             self.display = pygame.display.set_mode((self.jetson_config.pygame_display_width,
                                                     self.jetson_config.pygame_display_height),
@@ -142,6 +142,8 @@ class JetsonRunner:
                 # manual control always take precedence
                 if use_manual_control:
                     should_continue, vehicle_control = self.update_pygame(clock=clock)
+                else:
+                    should_continue, _ = self.update_pygame_keyboard(clock=clock)
                 # self.logger.debug(f"Vehicle Control = [{vehicle_control}]")
                 # pass the output into sender to send it
                 self.jetson_vehicle.update_parts(new_throttle=vehicle_control.throttle,
@@ -186,13 +188,15 @@ class JetsonRunner:
             bool - whether to continue the game
             VehicleControl - the new VehicleControl cmd by the keyboard
         """
-        should_continue, vehicle_control = self.controller.parse_events(clock=clock)
         if self.display is not None and self.agent.front_rgb_camera.data is not None:
             array: np.ndarray = self.agent.front_rgb_camera.data.copy()[:, :, ::-1]
             surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
             self.display.blit(surface, (0, 0))
         pygame.display.flip()
-        return should_continue, vehicle_control
+        return self.update_pygame_keyboard(clock=clock)
+
+    def update_pygame_keyboard(self, clock):
+        return self.controller.parse_events(clock=clock)
 
     def _assign_camera_intrinsics(self):
         if self.rs_d435i.depth_camera_intrinsics is not None:
