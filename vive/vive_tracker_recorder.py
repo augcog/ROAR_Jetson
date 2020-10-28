@@ -5,18 +5,25 @@ from triad_openvr import TriadOpenVR
 import time
 import logging
 from typing import Optional, Dict, List, Any
+from pathlib import Path
+from datetime import datetime
 
+class ViveTrackerRecorder:
+    def __init__(self, output_dir_path:Path, tracker_name:str, interval: float = 1 / 250, max_retry: int = 10000):
+        self.output_dir_path = output_dir_path
 
-class ViveTrackerPublisher:
-    def __init__(self, host: str, port: int, interval: float = 1 / 250, max_retry: int = 10000):
-        self.host = host
-        self.port = port
+        if self.output_dir_path.exists() is False:
+            self.output_dir_path.mkdir(parents=True, exist_ok=True)
+
+        self.output_file = open(f"{(self.output_dir_path / 'RFS_Track.txt').as_posix()}", 'w') #(self.output_dir_path / f"RFS_Track_{datetime.now()}.txt").open('w')
+        self.tracker_name = tracker_name
         self.interval = interval
         self.max_retry = max_retry
-        self.s: Optional[socket.socket] = None
         self.triad_openvr: Optional[TriadOpenVR] = None
         self.logger = logging.getLogger("Vive Tracker Publisher")
         self.initialize_openvr()
+
+
 
     def initialize_openvr(self):
         try:
@@ -25,20 +32,9 @@ class ViveTrackerPublisher:
         except Exception as e:
             self.logger.error(f"Failed to Initialize Socket. Make sure subscriber is running. Error: {e}")
 
-    def initialize_socket(self):
-        try:
-            self.s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            self.s.connect((self.host, self.port))
-        except ConnectionRefusedError as e:
-            self.logger.error("Please make sure Vive Tracker Subscriber is running")
-            self.s = None
-        except Exception as e:
-            self.logger.error(f"Unknown error happened: {e}")
-            exit(1)
-
     def poll(self) -> List[ViveTrackerMessage]:
         trackers = self.get_trackers()
-        messages:List[ViveTrackerMessage] = []
+        messages: List[ViveTrackerMessage] = []
         for tracker_name, tracker in trackers.items():
             euler = tracker.get_pose_euler()
             x, y, z, yaw, pitch, roll = euler
@@ -60,10 +56,10 @@ class ViveTrackerPublisher:
             try:
                 messages = self.poll()
                 for message in messages:
-                    self.send_message(data=message)
+                    self.record(data=message)
                 error_count = 0
-            except TypeError:
-                self.logger.error(f"Unable to Connect to Vive Tracker, trying again {error_count}. "
+            except TypeError as e:
+                self.logger.error(f"Error: {e}\nUnable to Connect to Vive Tracker, trying again {error_count}. "
                                   f"Try Moving the Tracker to reactivate it")
                 error_count += 1
             except ConnectionAbortedError:
@@ -76,15 +72,15 @@ class ViveTrackerPublisher:
             if sleep_time > 0:
                 time.sleep(sleep_time)
 
-    def send_message(self, data: ViveTrackerMessage):
-        m = f"Sending: {data}"
-        self.logger.info(m)
-        data_to_send = self.construct_json_message(data=data)
-        if self.s is not None:
-            self.s.sendall(data_to_send.encode())
-        else:
-            self.logger.error("Unable to send message: Socket not initalized")
-            self.initialize_socket()
+    def record(self, data: ViveTrackerMessage):
+        if data.device_name == self.tracker_name:
+            recording_data = f"{data.x}, {data.y},{data.z},{data.roll},{data.pitch},{data.yaw}"
+            m = f"Recording: {recording_data}"
+            self.logger.info(m)
+            self.output_file.write(f"{data.x}, {data.y},{data.z},{data.roll},{data.pitch},{data.yaw}\n")
+        # data_to_send = self.construct_json_message(data=data)
+
+
 
     @staticmethod
     def construct_json_message(data: ViveTrackerMessage) -> str:
@@ -97,5 +93,5 @@ if __name__ == "__main__":
     logging.basicConfig(format='%(asctime)s - %(name)s '
                                '- %(levelname)s - %(message)s',
                         level=logging.DEBUG)
-    vive_tracker_publisher = ViveTrackerPublisher(host="127.0.0.1", port=8000)
+    vive_tracker_publisher = ViveTrackerRecorder(output_dir_path=Path("./data"), tracker_name="tracker_2")
     vive_tracker_publisher.start()
