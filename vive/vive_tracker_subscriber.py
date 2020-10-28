@@ -52,7 +52,7 @@ class ViveTrackerSubscriber:
             vive_tracker_message = ViveTrackerMessage.parse_obj(d)
             if vive_tracker_message.device_name == self.tracker_name:
                 self.latest_tracker_message = vive_tracker_message
-            # self.logger.info(self.latest_tracker_message)
+            self.logger.info(self.latest_tracker_message)
         except Exception as e:
             self.logger.error(f"Error: {e} \nMaybe it is related to unable to parse buffer [{buffer}]. ")
 
