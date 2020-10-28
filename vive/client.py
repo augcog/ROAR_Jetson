@@ -1,29 +1,11 @@
 import socket
 
-HEADERSIZE = 10
-
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect((socket.gethostname(), 1243))
-
-while True:
-    full_msg = ''
-    new_msg = True
+if __name__ == "__main__":
+    HOST, PORT = "192.168.1.4", 8000
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    counter = 0
     while True:
-        msg = s.recv(16)
-        if new_msg:
-            print("new msg len:",msg[:HEADERSIZE])
-            msglen = int(msg[:HEADERSIZE])
-            new_msg = False
-
-        print(f"full message length: {msglen}")
-
-        full_msg += msg.decode("utf-8")
-
-        print(len(full_msg))
-
-
-        if len(full_msg)-HEADERSIZE == msglen:
-            print("full msg recvd")
-            print(full_msg[HEADERSIZE:])
-            new_msg = True
-            full_msg = ""
+        sock.sendto(bytes(f"data {counter}" + "\n", "utf-8"), (HOST, PORT))
+        received = str(sock.recv(1024), "utf-8")
+        print("Received: {}".format(received))
+        counter += 1
