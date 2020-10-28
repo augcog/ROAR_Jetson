@@ -8,22 +8,22 @@ from typing import Optional, Dict, List, Any
 from pathlib import Path
 from datetime import datetime
 
+
 class ViveTrackerRecorder:
-    def __init__(self, output_dir_path:Path, tracker_name:str, interval: float = 1 / 250, max_retry: int = 10000):
+    def __init__(self, output_dir_path: Path, tracker_name: str, interval: float = 1 / 250, max_retry: int = 10000):
         self.output_dir_path = output_dir_path
 
         if self.output_dir_path.exists() is False:
             self.output_dir_path.mkdir(parents=True, exist_ok=True)
 
-        self.output_file = open(f"{(self.output_dir_path / 'RFS_Track.txt').as_posix()}", 'w') #(self.output_dir_path / f"RFS_Track_{datetime.now()}.txt").open('w')
+        self.output_file = open(f"{(self.output_dir_path / 'RFS_Track.txt').as_posix()}",
+                                'w')  # (self.output_dir_path / f"RFS_Track_{datetime.now()}.txt").open('w')
         self.tracker_name = tracker_name
         self.interval = interval
         self.max_retry = max_retry
         self.triad_openvr: Optional[TriadOpenVR] = None
         self.logger = logging.getLogger("Vive Tracker Publisher")
         self.initialize_openvr()
-
-
 
     def initialize_openvr(self):
         try:
@@ -74,13 +74,16 @@ class ViveTrackerRecorder:
 
     def record(self, data: ViveTrackerMessage):
         if data.device_name == self.tracker_name:
-            recording_data = f"{data.x}, {data.y},{data.z},{data.roll},{data.pitch},{data.yaw}"
+            x, y, z, roll, pitch, yaw = self.to_right_handed(data.x, data.y, data.z, data.roll, data.pitch, data.yaw)
+            recording_data = f"{x}, {y},{z},{roll},{pitch},{yaw}"
             m = f"Recording: {recording_data}"
             self.logger.info(m)
-            self.output_file.write(f"{data.x}, {data.y},{data.z},{data.roll},{data.pitch},{data.yaw}\n")
+            self.output_file.write(f"{x}, {y},{z},{roll},{pitch},{yaw}\n")
         # data_to_send = self.construct_json_message(data=data)
 
-
+    @staticmethod
+    def to_right_handed(x, y, z, roll, pitch, yaw):
+        return -x, y, -z, -roll, pitch, -yaw
 
     @staticmethod
     def construct_json_message(data: ViveTrackerMessage) -> str:

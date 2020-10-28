@@ -6,6 +6,7 @@ from typing import Optional, Tuple
 from ROAR_Jetson.arduino_cmd_sender import ArduinoCommandSender
 
 from ROAR.agent_module.agent import Agent
+from ROAR.utilities_module.data_structures_models import Transform
 from Bridges.jetson_bridge import JetsonBridge
 from ROAR_Jetson.camera import RS_D435i
 import logging
@@ -18,6 +19,7 @@ from ROAR_Jetson.vive.vive_tracker_subscriber import ViveTrackerSubscriber, Vive
 import serial
 import sys
 from pathlib import Path
+import cv2
 
 
 class JetsonRunner:
@@ -36,7 +38,7 @@ class JetsonRunner:
         self.logger = logging.getLogger("Jetson Runner")
         self.display: Optional[pygame.display] = None
         self.serial: Optional[serial.Serial] = None
-
+        self.transform = Transform()
         self.controller = JetsonKeyboardControl()
         self.rs_d435i: Optional[RS_D435i] = None
         self.vive_tracker: Optional[ViveTrackerSubscriber] = None
@@ -146,11 +148,14 @@ class JetsonRunner:
                 if use_manual_control:
                     should_continue, vehicle_control = self.update_pygame(clock=clock)
                 else:
-                    should_continue, _ = self.update_pygame_keyboard(clock=clock)
+                    should_continue, _ = self.update_pygame(clock=clock)
+                    # uncomment to not display on pygame on autodrive mode
+                    # should_continue, _ = self.update_pygame_keyboard(clock=clock)
                 # self.logger.debug(f"Vehicle Control = [{vehicle_control}]")
                 # pass the output into sender to send it
                 self.jetson_vehicle.update_parts(new_throttle=vehicle_control.throttle,
                                                  new_steering=vehicle_control.steering)
+                # print(vehicle_control)
         except KeyboardInterrupt:
             self.logger.info("Keyboard Interrupt detected. Safely quitting")
             self.jetson_vehicle.stop()
@@ -175,9 +180,14 @@ class JetsonRunner:
                 "rear_rgb": None,
                 "front_depth": self.jetson_vehicle.front_depth_img,
                 "imu": None,
-                "vive_tracking": self.vive_tracker.latest_tracker_message if self.vive_tracker is not None and self.vive_tracker.latest_tracker_message is not None else None
+                "vive_tracking": self.vive_tracker.latest_tracker_message
+                if self.vive_tracker is not None and self.vive_tracker.latest_tracker_message is not None else None
             }
         )
+        if sensors_data.vive_tracker_data is not None:
+            self.jetson_vehicle.location = sensors_data.vive_tracker_data.location.to_array()
+            self.jetson_vehicle.rotation = sensors_data.vive_tracker_data.rotation.to_array()
+            self.jetson_vehicle.velocity = sensors_data.vive_tracker_data.velocity.to_array()
         new_vehicle = self.jetson_bridge.convert_vehicle_from_source_to_agent(self.jetson_vehicle)
         return sensors_data, new_vehicle
 

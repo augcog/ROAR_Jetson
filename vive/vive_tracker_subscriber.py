@@ -23,28 +23,36 @@ class ViveTrackerSubscriber:
         # self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.bind((self.host, self.port))
         # self.socket.listen(5)
-        while True:
+        try:
             while True:
-                received_message, addr = self.socket.recvfrom(self.buffer_length)
-                received_message = received_message.decode()
-                # received_message = conn.recv(self.buffer_length).decode()
-                if received_message != '':
-                    found_ending_char = ';' in received_message
-                    if found_ending_char:
-                        buffer = buffer + received_message[:-1]
-                        self.update_latest_tracker_message(buffer)
-                        buffer = ""
+                while True:
+                    received_message, addr = self.socket.recvfrom(self.buffer_length)
+                    received_message = received_message.decode()
+                    # received_message = conn.recv(self.buffer_length).decode()
+                    if received_message != '':
+                        found_ending_char = ';' in received_message
+                        if found_ending_char:
+                            buffer = buffer + received_message[:-1]
+                            self.update_latest_tracker_message(buffer)
+                            buffer = ""
+                        else:
+                            buffer += received_message
                     else:
-                        buffer += received_message
-                else:
-                    pass
+                        pass
+        except WindowsError as e:
+            self.logger.error(f"{e}"
+                              f"This error is known and can be safely ignored. "
+                              f"However, if you are bothered, please contact admin to expedite fix patch. ")
+        except Exception as e:
+            self.logger.error(f"Error: {e}")
 
     def update_latest_tracker_message(self, buffer):
         try:
             d = json.loads(json.loads(buffer))
             vive_tracker_message = ViveTrackerMessage.parse_obj(d)
-            self.latest_tracker_message = vive_tracker_message
-            self.logger.info(self.latest_tracker_message)
+            if vive_tracker_message.device_name == self.tracker_name:
+                self.latest_tracker_message = vive_tracker_message
+            # self.logger.info(self.latest_tracker_message)
         except Exception as e:
             self.logger.error(f"Error: {e} \nMaybe it is related to unable to parse buffer [{buffer}]. ")
 

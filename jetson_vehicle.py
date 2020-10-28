@@ -16,7 +16,12 @@ import numpy as np
 from ROAR_Jetson.arduino_receiver import ArduinoReceiver
 from ROAR_Jetson.vive.vive_tracker_subscriber import ViveTrackerSubscriber
 
+
 class Vehicle:
+    """
+    In right hand coordinate system
+    """
+
     def __init__(self):
         self.parts = []
         self.on = True
@@ -24,6 +29,11 @@ class Vehicle:
         self.logger = logging.getLogger("Jetson Vehicle")
         self.front_rgb_img: Optional[np.ndarray] = None
         self.front_depth_img: Optional[np.ndarray] = None
+        self.location: np.array = np.asarray([0, 0, 0])  # x,y,z
+        self.rotation: np.array = np.asarray([0, 0, 0])  # pitch, yaw, roll
+        self.velocity: np.array = np.asarray([0, 0, 0])  # vel_x, vel_y, vel_z
+        self.throttle: float = 0
+        self.steering: float = 0
 
     def add(self, part, inputs: Optional[List] = None, outputs: Optional[List] = None,
             threaded=False):
@@ -135,6 +145,7 @@ class Vehicle:
                 if entry.get('thread') and isinstance(p, ArduinoCommandSender):
                     # send the throttle and steering to Arduino
                     p.run_threaded(throttle=new_throttle, steering=new_steering)
+                    self.throttle, self.steering = new_throttle, new_steering
                 elif entry.get('thread') and isinstance(p, RS_D435i):
                     self.front_rgb_img, self.front_depth_img = p.run_threaded()
                 elif isinstance(p, ArduinoReceiver):

@@ -50,7 +50,7 @@
     "image_size_x": 640,
     "image_size_y": 480
   },
-  "waypoint_file_path": "./ROAR_Sim/data/easy_map_waypoints.txt",
+  "waypoint_file_path": "./ROAR_Jetson/data/RFS_Track.txt",
   "output_data_folder_path": "./output/",
   "enable_autopilot": true,
   "spawn_point_id": 1,

@@ -4,5 +4,6 @@
     "pygame_display_height": 480,
     "pygameless": true,
     "vive_tracker_host": "127.0.0.1",
-    "vive_tracker_port": 8000
+    "vive_tracker_port": 8000,
+    "vive_tracker_name": "tracker_1"
 }
