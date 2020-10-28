@@ -121,13 +121,6 @@ class JetsonRunner:
         except Exception as e:
             self.logger.error(f"Failed to initalize Vive Tracker: {e}")
 
-        # try:
-        #     self.ar_marker_localization = ARMarkerLocalization(agent=self.agent)
-        #     self.jetson_vehicle.add(self.ar_marker_localization,
-        #                             threaded=True)
-        # except Exception as e:
-        #     self.logger.error(f"Unable to initialize Localization service: {e}")
-
     def start_game_loop(self, use_manual_control=False):
         self.logger.info("Starting Game Loop")
         try:
@@ -181,7 +174,8 @@ class JetsonRunner:
                 "front_rgb": self.jetson_vehicle.front_rgb_img,
                 "rear_rgb": None,
                 "front_depth": self.jetson_vehicle.front_depth_img,
-                "imu": None
+                "imu": None,
+                "vive_tracking": self.vive_tracker.latest_tracker_message if self.vive_tracker is not None and self.vive_tracker.latest_tracker_message is not None else None
             }
         )
         new_vehicle = self.jetson_bridge.convert_vehicle_from_source_to_agent(self.jetson_vehicle)
