@@ -15,7 +15,8 @@ from ROAR_Jetson.jetson_keyboard_control import JetsonKeyboardControl
 import numpy as np
 from ROAR_Jetson.configurations.configuration import Configuration as JetsonConfig
 from ROAR_Jetson.arduino_receiver import ArduinoReceiver
-from ROAR_Jetson.vive.vive_tracker_subscriber import ViveTrackerSubscriber, ViveTrackerMessage
+from ROAR_Jetson.vive.vive_tracker_client import ViveTrackerClient
+from ROAR_Jetson.vive.models import ViveTrackerMessage
 import serial
 import sys
 from pathlib import Path
@@ -41,7 +42,7 @@ class JetsonRunner:
         self.transform = Transform()
         self.controller = JetsonKeyboardControl()
         self.rs_d435i: Optional[RS_D435i] = None
-        self.vive_tracker: Optional[ViveTrackerSubscriber] = None
+        self.vive_tracker: Optional[ViveTrackerClient] = None
 
         if jetson_config.initiate_pygame:
             self.setup_pygame()
@@ -116,7 +117,7 @@ class JetsonRunner:
             self.logger.error(f"Unable to connect to Intel Realsense: {e}")
 
         try:
-            self.vive_tracker = ViveTrackerSubscriber(host=self.jetson_config.vive_tracker_host,
+            self.vive_tracker = ViveTrackerClient(host=self.jetson_config.vive_tracker_host,
                                                       port=self.jetson_config.vive_tracker_port,
                                                       tracker_name=self.jetson_config.vive_tracker_name)
             self.jetson_vehicle.add(self.vive_tracker, threaded=True)

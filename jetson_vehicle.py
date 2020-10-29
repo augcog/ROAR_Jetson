@@ -14,7 +14,7 @@ from ROAR_Jetson.camera import RS_D435i
 from typing import Optional, List
 import numpy as np
 from ROAR_Jetson.arduino_receiver import ArduinoReceiver
-from ROAR_Jetson.vive.vive_tracker_subscriber import ViveTrackerSubscriber
+from ROAR_Jetson.vive.vive_tracker_client import ViveTrackerClient
 
 
 class Vehicle:
@@ -150,7 +150,7 @@ class Vehicle:
                     self.front_rgb_img, self.front_depth_img = p.run_threaded()
                 elif isinstance(p, ArduinoReceiver):
                     p.run_threaded()
-                elif isinstance(p, ViveTrackerSubscriber):
+                elif isinstance(p, ViveTrackerClient):
                     p.run_threaded()
                 else:
                     self.logger.warning(f"Unknown part [{p}]")
