@@ -1,28 +1,15 @@
 import socket
-import time
 
+import socket
 
-HEADERSIZE = 10
+UDP_IP = "192.168.1.4"
+UDP_PORT = 8000
+MESSAGE = b"Hello, World!"
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.bind((socket.gethostname(), 1243))
-s.listen(5)
+print("UDP target IP: %s" % UDP_IP)
+print("UDP target port: %s" % UDP_PORT)
+print("message: %s" % MESSAGE)
 
-while True:
-    # now our endpoint knows about the OTHER endpoint.
-    clientsocket, address = s.accept()
-    print(f"Connection from {address} has been established.")
-
-    msg = "Welcome to the server!"
-    msg = f"{len(msg):<{HEADERSIZE}}"+msg
-
-    clientsocket.send(bytes(msg,"utf-8"))
-
-    while True:
-        time.sleep(3)
-        msg = f"The time is {time.time()}"
-        msg = f"{len(msg):<{HEADERSIZE}}"+msg
-
-        print(msg)
-
-        clientsocket.send(bytes(msg,"utf-8"))
+sock = socket.socket(socket.AF_INET, # Internet
+                     socket.SOCK_DGRAM) # UDP
+sock.sendto(MESSAGE, (UDP_IP, UDP_PORT))

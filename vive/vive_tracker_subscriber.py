@@ -26,7 +26,8 @@ class ViveTrackerSubscriber:
         try:
             while True:
                 while True:
-                    received_message, addr = self.socket.recvfrom(self.buffer_length)
+                    # self.socket.sendto(bytes(self.tracker_name + "\n", "utf-8"), (self.host, self.port))
+                    received_message = self.socket.recv(self.buffer_length)
                     received_message = received_message.decode()
                     # received_message = conn.recv(self.buffer_length).decode()
                     if received_message != '':

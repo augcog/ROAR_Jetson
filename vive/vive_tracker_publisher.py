@@ -96,5 +96,5 @@ if __name__ == "__main__":
     logging.basicConfig(format='%(asctime)s - %(name)s '
                                '- %(levelname)s - %(message)s',
                         level=logging.DEBUG)
-    vive_tracker_publisher = ViveTrackerPublisher(addresses=[("192.168.1.7", 9001)])
+    vive_tracker_publisher = ViveTrackerPublisher(addresses=[("192.168.1.7", 8000)])
     vive_tracker_publisher.start()
