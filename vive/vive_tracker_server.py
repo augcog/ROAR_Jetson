@@ -10,6 +10,7 @@ import json
 class ViveTrackerServer(socketserver.BaseRequestHandler):
     def poll(self, tracker_name) -> Optional[ViveTrackerMessage]:
         tracker = self.get_tracker(tracker_name=tracker_name)
+        print("tracker: ", tracker)
         if tracker is not None:
             message: ViveTrackerMessage = self.create_tracker_message(tracker=tracker, tracker_name=tracker_name)
             return message
@@ -43,12 +44,12 @@ class ViveTrackerServer(socketserver.BaseRequestHandler):
         return trackers
 
     def handle(self):
-        tracker_name = self.request[0].strip()
+        tracker_name = self.request[0].strip().decode()
         socket = self.request[1]
         message: Optional[ViveTrackerMessage] = self.poll(tracker_name=tracker_name)
+        print("message = ", message)
         if message is not None:
             message = (self.construct_json_message(data=message))
-            print(message)
             socket.sendto(message.encode(), self.client_address)
 
 

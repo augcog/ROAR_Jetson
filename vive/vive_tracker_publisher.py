@@ -16,6 +16,7 @@ class ViveTrackerPublisher:
         self.logger = logging.getLogger("Vive Tracker Publisher")
         self.initialize_openvr()
         self.initialize_sockets(addresses)
+        # self.logger.info("Server Launched at [{}:{}]")
 
     def initialize_openvr(self):
         try:
@@ -96,5 +97,5 @@ if __name__ == "__main__":
     logging.basicConfig(format='%(asctime)s - %(name)s '
                                '- %(levelname)s - %(message)s',
                         level=logging.DEBUG)
-    vive_tracker_publisher = ViveTrackerPublisher(addresses=[("192.168.1.7", 8000)])
+    vive_tracker_publisher = ViveTrackerPublisher(addresses=[("192.168.1.5", 8000)])
     vive_tracker_publisher.start()
