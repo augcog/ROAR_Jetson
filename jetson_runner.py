@@ -190,6 +190,7 @@ class JetsonRunner:
             self.jetson_vehicle.rotation = sensors_data.vive_tracker_data.rotation.to_array()
             self.jetson_vehicle.velocity = sensors_data.vive_tracker_data.velocity.to_array()
         new_vehicle = self.jetson_bridge.convert_vehicle_from_source_to_agent(self.jetson_vehicle)
+        # print(new_vehicle.transform)
         return sensors_data, new_vehicle
 
     def update_pygame(self, clock) -> Tuple[bool, VehicleControl]:

@@ -10,7 +10,6 @@ import json
 class ViveTrackerServer(socketserver.BaseRequestHandler):
     def poll(self, tracker_name) -> Optional[ViveTrackerMessage]:
         tracker = self.get_tracker(tracker_name=tracker_name)
-        print("tracker: ", tracker)
         if tracker is not None:
             message: ViveTrackerMessage = self.create_tracker_message(tracker=tracker, tracker_name=tracker_name)
             return message
@@ -23,9 +22,12 @@ class ViveTrackerServer(socketserver.BaseRequestHandler):
     @staticmethod
     def create_tracker_message(tracker, tracker_name):
         euler = tracker.get_pose_euler()
-        vel_x, vel_y, vel_z = tracker.get_velocity()
+        try:
+            vel_x, vel_y, vel_z = tracker.get_velocity()
+        except:
+            vel_x, vel_y, vel_z = 0, 0, 0
         # print(vel_x, vel_y, vel_z)
-        x, y, z, yaw, pitch, roll = euler
+        x, y, z, roll, pitch, yaw = euler
         message = ViveTrackerMessage(valid=True, x=x, y=y, z=z,
                                      yaw=yaw, pitch=pitch, roll=roll,
                                      vel_x=vel_x, vel_y=vel_y, vel_z=vel_z,

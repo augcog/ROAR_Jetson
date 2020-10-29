@@ -2,14 +2,16 @@ import socket
 import sys
 import logging
 from typing import Optional
-from ROAR_Jetson.vive.models import ViveTrackerMessage
-# from models import ViveTrackerMessage
+try:
+    from ROAR_Jetson.vive.models import ViveTrackerMessage
+except:
+    from models import ViveTrackerMessage
 import json
 import time
 
 
 class ViveTrackerClient:
-    def __init__(self, host, port, tracker_name, interval=0.2, buffer_length=1024):
+    def __init__(self, host, port, tracker_name, interval=0.1, buffer_length=1024):
         self.host = host
         self.port = port
         self.tracker_name = tracker_name
@@ -75,6 +77,6 @@ if __name__ == "__main__":
     logging.basicConfig(format='%(asctime)s - %(name)s '
                                '- %(levelname)s - %(message)s',
                         level=logging.DEBUG)
-    HOST, PORT = "localhost", 8000
+    HOST, PORT = "192.168.1.5", 8000
     client = ViveTrackerClient(host=HOST, port=PORT, tracker_name="tracker_1")
     client.update()
