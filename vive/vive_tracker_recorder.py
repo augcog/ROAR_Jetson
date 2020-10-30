@@ -83,7 +83,7 @@ class ViveTrackerRecorder:
 
     @staticmethod
     def to_right_handed(x, y, z, roll, pitch, yaw):
-        return -x, y, -z, roll, pitch, yaw
+        return x, y, z, roll, pitch, yaw
 
     @staticmethod
     def construct_json_message(data: ViveTrackerMessage) -> str:
