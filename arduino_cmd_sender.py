@@ -84,6 +84,7 @@ class ArduinoCommandSender:
         Returns:
             None
         """
+
         throttle_send, steering_send = self.map_control(throttle, steering)
         try:
             self.send_cmd_helper(new_throttle=throttle_send, new_steering=steering_send)
