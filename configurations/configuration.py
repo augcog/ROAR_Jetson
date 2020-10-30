@@ -11,7 +11,7 @@ class Configuration(BaseModel):
     unix_serial_port: str = Field(default="/dev/ttyACM0")
     baud_rate: int = Field(default=115200)
     arduino_timeout: int = Field(default=1)
-    write_timeout: int = Field(default=1)
+    write_timeout: int = Field(default=0)
     motor_max: int = Field(default=1800)
     motor_min: int = Field(default=1200)
     motor_neutral: int = Field(default=1500)
