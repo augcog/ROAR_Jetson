@@ -83,7 +83,7 @@ class ViveTrackerRecorder:
 
     @staticmethod
     def to_right_handed(x, y, z, roll, pitch, yaw):
-        return -x, y, -z, -roll, pitch, -yaw
+        return -x, y, -z, roll, pitch, yaw
 
     @staticmethod
     def construct_json_message(data: ViveTrackerMessage) -> str:
@@ -96,5 +96,5 @@ if __name__ == "__main__":
     logging.basicConfig(format='%(asctime)s - %(name)s '
                                '- %(levelname)s - %(message)s',
                         level=logging.DEBUG)
-    vive_tracker_publisher = ViveTrackerRecorder(output_dir_path=Path("./data"), tracker_name="tracker_2")
+    vive_tracker_publisher = ViveTrackerRecorder(output_dir_path=Path("./data"), tracker_name="tracker_1")
     vive_tracker_publisher.start()

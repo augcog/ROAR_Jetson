@@ -5,34 +5,42 @@ from triad_openvr import TriadOpenVR
 import logging
 from models import ViveTrackerMessage
 import json
-
+from pprint import pprint
 
 class ViveTrackerServer(socketserver.BaseRequestHandler):
     def poll(self, tracker_name) -> Optional[ViveTrackerMessage]:
         tracker = self.get_tracker(tracker_name=tracker_name)
+
         if tracker is not None:
-            message: ViveTrackerMessage = self.create_tracker_message(tracker=tracker, tracker_name=tracker_name)
+            message: Optional[ViveTrackerMessage] = self.create_tracker_message(tracker=tracker, tracker_name=tracker_name)
             return message
+        else:
+            triad_openvr = self.reconnect_triad_vr()
+
         return None
 
     @staticmethod
     def get_tracker(tracker_name):
+        # print(triad_openvr.devices)
         return triad_openvr.devices.get(tracker_name, None)
 
     @staticmethod
     def create_tracker_message(tracker, tracker_name):
-        euler = tracker.get_pose_euler()
+
         try:
+            euler = tracker.get_pose_euler()
             vel_x, vel_y, vel_z = tracker.get_velocity()
+            x, y, z,  yaw, pitch, roll = euler
+            message = ViveTrackerMessage(valid=True, x=x, y=y, z=z,
+                                         yaw=yaw, pitch=pitch, roll=roll,
+                                         vel_x=vel_x, vel_y=vel_y, vel_z=vel_z,
+                                         device_name=tracker_name)
+            return message
         except:
-            vel_x, vel_y, vel_z = 0, 0, 0
-        # print(vel_x, vel_y, vel_z)
-        x, y, z, roll, pitch, yaw = euler
-        message = ViveTrackerMessage(valid=True, x=x, y=y, z=z,
-                                     yaw=yaw, pitch=pitch, roll=roll,
-                                     vel_x=vel_x, vel_y=vel_y, vel_z=vel_z,
-                                     device_name=tracker_name)
-        return message
+            print(f"Cannot find Tracker {tracker} is either offline or malfunctioned")
+            triad_openvr = TriadOpenVR.reconnect_triad_vr()
+            return None
+
 
     @staticmethod
     def construct_json_message(data: ViveTrackerMessage) -> str:
@@ -53,7 +61,15 @@ class ViveTrackerServer(socketserver.BaseRequestHandler):
         if message is not None:
             message = (self.construct_json_message(data=message))
             socket.sendto(message.encode(), self.client_address)
-
+    @staticmethod
+    def reconnect_triad_vr():
+        print(
+            f"Trying to reconnect to OpenVR to refresh devices. "
+            f"Devices online:")
+        triad_openvr = TriadOpenVR()
+        pprint(triad_openvr.devices)
+        print("")
+        return triad_openvr
 
 if __name__ == "__main__":
     logging.basicConfig(format='%(asctime)s - %(name)s '
@@ -61,5 +77,6 @@ if __name__ == "__main__":
                         level=logging.DEBUG)
     HOST, PORT = "192.168.1.5", 8000
     server = socketserver.UDPServer((HOST, PORT), ViveTrackerServer)
-    triad_openvr = TriadOpenVR()
+    triad_openvr = ViveTrackerServer.reconnect_triad_vr()
+    print("Server Started. Listening for client connection")
     server.serve_forever()

@@ -154,6 +154,7 @@ class JetsonRunner:
                     # should_continue, _ = self.update_pygame_keyboard(clock=clock)
                 # self.logger.debug(f"Vehicle Control = [{vehicle_control}]")
                 # pass the output into sender to send it
+
                 self.jetson_vehicle.update_parts(new_throttle=vehicle_control.throttle,
                                                  new_steering=vehicle_control.steering)
                 # print(vehicle_control)
