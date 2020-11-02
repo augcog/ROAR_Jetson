@@ -75,7 +75,7 @@ if __name__ == "__main__":
     logging.basicConfig(format='%(asctime)s - %(name)s '
                                '- %(levelname)s - %(message)s',
                         level=logging.DEBUG)
-    HOST, PORT = "192.168.1.5", 8000
+    HOST, PORT = "192.168.1.8", 8000
     server = socketserver.UDPServer((HOST, PORT), ViveTrackerServer)
     triad_openvr = ViveTrackerServer.reconnect_triad_vr()
     print("Server Started. Listening for client connection")
