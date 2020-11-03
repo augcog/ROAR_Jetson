@@ -38,7 +38,7 @@ class ViveTrackerServer(socketserver.BaseRequestHandler):
             return message
         except:
             print(f"Cannot find Tracker {tracker} is either offline or malfunctioned")
-            triad_openvr = TriadOpenVR.reconnect_triad_vr()
+            triad_openvr = ViveTrackerServer.reconnect_triad_vr()
             return None
 
 
