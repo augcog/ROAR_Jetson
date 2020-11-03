@@ -50,7 +50,7 @@ class ViveTrackerClient:
             except socket.timeout:
                 self.logger.error("Timed out")
             except ConnectionResetError as e:
-                self.logger.debug("Connection reset. Retrying")
+                self.logger.error(f"Error: {e}. Retrying")
             except OSError as e:
                 pass
             except KeyboardInterrupt:

@@ -65,7 +65,7 @@ class JetsonRunner:
         if platform.architecture()[1] == "ELF":
             self.display = pygame.display.set_mode((self.jetson_config.pygame_display_width,
                                                     self.jetson_config.pygame_display_height),
-                                                   pygame.OPENGLBLIT)
+                                                   pygame.DOUBLEBUF|pygame.OPENGLBLIT|pygame.OPENGL)
         else:
             self.display = pygame.display.set_mode((self.jetson_config.pygame_display_width,
                                                     self.jetson_config.pygame_display_height),
