@@ -61,15 +61,9 @@ class JetsonRunner:
         """
         pygame.init()
         pygame.font.init()
-        import platform
-        if platform.architecture()[1] == "ELF":
-            self.display = pygame.display.set_mode((self.jetson_config.pygame_display_width,
+        self.display = pygame.display.set_mode((self.jetson_config.pygame_display_width,
                                                     self.jetson_config.pygame_display_height),
-                                                   pygame.DOUBLEBUF|pygame.OPENGLBLIT|pygame.OPENGL)
-        else:
-            self.display = pygame.display.set_mode((self.jetson_config.pygame_display_width,
-                                                    self.jetson_config.pygame_display_height),
-                                                   pygame.HWSURFACE | pygame.DOUBLEBUF)
+                                                    pygame.HWSURFACE | pygame.DOUBLEBUF)
         self.pygame_initiated = True
         self.logger.debug("PyGame initiated")
 
