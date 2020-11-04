@@ -36,7 +36,7 @@ volatile uint32_t unChannel2InShared;
 
 void setup()
 {
-  Serial.begin(115200);
+  Serial.begin(9600);
 
   servoChannel1.attach(CHANNEL1_OUT_PIN);
   servoChannel2.attach(CHANNEL2_OUT_PIN);

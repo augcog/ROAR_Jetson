@@ -9,7 +9,7 @@ class Configuration(BaseModel):
     client_ip: str = Field(default="192.168.50.205")
     win_serial_port: str = Field(default="COM4")
     unix_serial_port: str = Field(default="/dev/ttyACM0")
-    baud_rate: int = Field(default=115200)
+    baud_rate: int = Field(default=9600)
     arduino_timeout: float = Field(default=0.5)
     write_timeout: float = Field(default=0.5)
     motor_max: int = Field(default=1800)
