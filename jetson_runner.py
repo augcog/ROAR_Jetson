@@ -62,8 +62,8 @@ class JetsonRunner:
         pygame.init()
         pygame.font.init()
         self.display = pygame.display.set_mode((self.jetson_config.pygame_display_width,
-                                                    self.jetson_config.pygame_display_height),
-                                                    pygame.HWSURFACE | pygame.DOUBLEBUF)
+                                                self.jetson_config.pygame_display_height),
+                                               pygame.HWSURFACE | pygame.DOUBLEBUF)
         self.pygame_initiated = True
         self.logger.debug("PyGame initiated")
 
@@ -72,7 +72,7 @@ class JetsonRunner:
             if 'win' in sys.platform:
                 self.serial = serial.Serial(port=self.jetson_config.win_serial_port,
                                             baudrate=self.jetson_config.baud_rate,
-                                            timeout=self.jetson_config.arduino_timeout,
+                                            timeout=self.jetson_config.arduino_timeout,  # read timeout
                                             writeTimeout=self.jetson_config.write_timeout)
             else:
                 self.serial = serial.Serial(port=self.jetson_config.unix_serial_port,
@@ -112,8 +112,8 @@ class JetsonRunner:
 
         try:
             self.vive_tracker = ViveTrackerClient(host=self.jetson_config.vive_tracker_host,
-                                                      port=self.jetson_config.vive_tracker_port,
-                                                      tracker_name=self.jetson_config.vive_tracker_name)
+                                                  port=self.jetson_config.vive_tracker_port,
+                                                  tracker_name=self.jetson_config.vive_tracker_name)
             self.jetson_vehicle.add(self.vive_tracker, threaded=True)
         except Exception as e:
             self.logger.error(f"Failed to initalize Vive Tracker: {e}")
