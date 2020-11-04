@@ -99,7 +99,7 @@ class JetsonRunner:
         except Exception as e:
             self.logger.error(f"Ignoring Error during ArduinoCommandSender set up: {e}")
         try:
-            self.jetson_vehicle.add(ArduinoReceiver(serial=self.serial, client_ip=self.jetson_config.client_ip))
+            self.jetson_vehicle.add(ArduinoReceiver(serial=self.serial, client_ip=self.jetson_config.client_ip), threaded=True)
         except Exception as e:
             self.logger.error(f"Ignoring Error during ArduinoReceiver setup: {e}")
         try:
