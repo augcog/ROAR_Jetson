@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-
+import math
 
 class ViveTrackerMessage(BaseModel):
     valid: bool = Field(default=False)
@@ -16,8 +16,9 @@ class ViveTrackerMessage(BaseModel):
 
     def __repr__(self):
         return f"device name: {self.device_name} -> " \
-               f"x: {round(self.x, 5)} | y: {round(self.y, 5)} | z: {round(self.z, 5)} | " \
-               f"pitch: {round(self.pitch, 5)} | yaw: {round(self.yaw, 5)} | roll: {round(self.roll, 5)}"
+               f"x: {round(self.x, 5)}, y: {round(self.y, 5)}, z: {round(self.z, 5)} | " \
+               f"pitch: {round(self.pitch, 5)}, yaw: {round(self.yaw, 5)}, roll: {round(self.roll, 5)} | " \
+               f"vel_x: {round(self.vel_x, 5)}, vel_y: {round(self.vel_y, 5)}, vel_z: {round(self.vel_z, 5)} | "
 
     def __str__(self):
         return self.__repr__()
