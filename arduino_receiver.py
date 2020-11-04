@@ -41,7 +41,7 @@ class ArduinoReceiver:
             try:
                 vel_wheel = self.serial.readline().decode().rstrip()
                 rpm_throttle, rpm_steering = vel_wheel.split(",")
-                self.logger.debug(f"rpm_throttle = {rpm_throttle} | rpm_steering = {rpm_steering}")
+                # self.logger.debug(f"rpm_throttle = {rpm_throttle} | rpm_steering = {rpm_steering}")
             except Exception as e:
                 self.logger.error(e)
             # vel_wheel = vel_wheel[2:][:-5]
@@ -66,11 +66,11 @@ class ArduinoReceiver:
 
 
     def run_threaded(self, **args):
-        if (self.new_throttle != self.old_throttle):
+        if self.new_throttle != self.old_throttle:
             msg = struct.pack('>Ii', COMMAND_THROTTLE, int(self.new_throttle * 32767))
             self.sock.sendto(msg, (self.client_ip, UDP_PORT))
             self.old_throttle = self.new_throttle
-        if (self.new_steering != self.old_steering):
+        if self.new_steering != self.old_steering:
             msg = struct.pack('>Ii', COMMAND_STEERING, int(self.new_steering * 32767))
             self.sock.sendto(msg, (self.client_ip, UDP_PORT))
             self.old_steering = self.new_steering
