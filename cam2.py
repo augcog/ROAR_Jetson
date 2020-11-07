@@ -23,7 +23,11 @@ class CSICamera(BaseCamera):
 
     def gstreamer_pipeline(self, capture_width=3280, capture_height=2464, output_width=224, output_height=224,
                            framerate=21, flip_method=0):
-        return 'nvarguscamerasrc sensor-id=0 ! video/x-raw(memory:NVMM), width=%d, height=%d, format=(string)NV12, framerate=(fraction)%d/1 ! nvvidconv flip-method=%d ! nvvidconv ! video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! videoconvert ! appsink' % (
+        return 'nvarguscamerasrc sensor-id=0 ! ' \
+               'video/x-raw(memory:NVMM), width=%d, height=%d, format=(string)NV12, framerate=(fraction)%d/1 ! ' \
+               'nvvidconv flip-method=%d ! nvvidconv ! ' \
+               'video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! ' \
+               'videoconvert ! appsink' % (
             capture_width, capture_height, framerate, flip_method, output_width, output_height)
 
     def gstreamer_pipelineout(self, output_width=1280, output_height=720, framerate=21, client_ip='127.0.0.1'):
@@ -77,10 +81,10 @@ class CSICamera(BaseCamera):
             self.poll_camera()
 
     def poll_camera(self):
-        import cv2
         self.ret, frame = self.camera.read()
-        self.out_send.write(frame)
-        self.frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        print(frame)
+        # self.out_send.write(frame)
+        # self.frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
     def run(self):
         self.poll_camera()
@@ -105,13 +109,8 @@ class RS_D435i(object):
     """
 
     def gstreamer_pipelineout(self, output_width=1280, output_height=720, framerate=21, client_ip='127.0.0.1'):
-        return 'appsrc ! videoconvert ! ' \
-               'video/x-raw, format=(string)BGRx, width=%d, height=%d, framerate=(fraction)%d/1 ! ' \
-               'videoconvert ! video/x-raw, format=(string)I420 ! ' \
-               'omxh264enc tune=zerolatency bitrate=8000000 speed-preset=ultrafast ! ' \
-               'video/x-h264, stream-format=byte-stream ! rtph264pay mtu=1400 ! ' \
-               'udpsink host=%s port=5001 sync=false async=false' % (output_width, output_height,
-                                                                     framerate, client_ip)
+        return 'appsrc ! videoconvert ! video/x-raw, format=(string)BGRx, width=%d, height=%d, framerate=(fraction)%d/1 ! videoconvert ! video/x-raw, format=(string)I420 ! omxh264enc tune=zerolatency bitrate=8000000 speed-preset=ultrafast ! video/x-h264, stream-format=byte-stream ! rtph264pay mtu=1400 ! udpsink host=%s port=5001 sync=false async=false' % (
+            output_width, output_height, framerate, client_ip)
 
     def __init__(self, image_w=640, image_h=480, image_d=3, image_output=True, framerate=30, client_ip='127.0.0.1'):
         self.logger = logging.getLogger("Intel RealSense D435i")
@@ -180,8 +179,7 @@ class RS_D435i(object):
                                            cx=intrinsics.ppx,
                                            cy=intrinsics.ppy,
                                            distortion_coefficient=intrinsics.coeffs)
-            cv2.imshow("frame", self.img)
-            cv2.waitKey(1)
+
             self.out_send.write(self.img)
 
         # Fetch IMU frame
@@ -232,7 +230,6 @@ class RS_D435i(object):
         ])
         self.rgb_camera_distortion_coefficients = distortion_coefficient
 
-
 if __name__ == "__main__":
-    realsense_cam = RS_D435i()
-    realsense_cam.update()
+    csicamera = CSICamera()
+    csicamera.update()

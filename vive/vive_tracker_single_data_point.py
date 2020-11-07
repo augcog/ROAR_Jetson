@@ -54,11 +54,9 @@ class ViveTrackerRecorder:
             messages = self.poll()
             for message in messages:
                 self.record(data=message)
-            error_count = 0
         except TypeError as e:
-            self.logger.error(f"Error: {e}\nUnable to Connect to Vive Tracker, trying again {error_count}. "
+            self.logger.error(f"Error: {e}\nUnable to Connect to Vive Tracker, trying again. "
                               f"Try Moving the Tracker to reactivate it")
-            error_count += 1
         except ConnectionAbortedError:
             self.logger.error("Failed to send")
         except ConnectionResetError as e:
