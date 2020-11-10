@@ -106,7 +106,7 @@ class ArduinoCommandSender:
         """
         # if self.prev_throttle != new_throttle or self.prev_steering != new_steering:
         serial_msg = '& {} {}\r'.format(new_throttle, new_steering)
-        self.logger.debug(f"Sending [{serial_msg.rstrip()}]")
+        # self.logger.debug(f"Sending [{serial_msg.rstrip()}]")
         self.serial.write(serial_msg.encode('ascii'))
         self.prev_throttle = new_throttle
         self.prev_steering = new_steering
