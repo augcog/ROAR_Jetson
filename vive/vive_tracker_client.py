@@ -77,6 +77,6 @@ if __name__ == "__main__":
     logging.basicConfig(format='%(asctime)s - %(name)s '
                                '- %(levelname)s - %(message)s',
                         level=logging.DEBUG)
-    HOST, PORT = "192.168.1.8", 8000
+    HOST, PORT = "192.168.1.19", 8000
     client = ViveTrackerClient(host=HOST, port=PORT, tracker_name="tracker_1")
     client.update()
