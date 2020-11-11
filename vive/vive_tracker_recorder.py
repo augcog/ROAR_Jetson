@@ -75,6 +75,9 @@ class ViveTrackerRecorder:
     def record(self, data: ViveTrackerMessage):
         if data.device_name == self.tracker_name:
             x, y, z, roll, pitch, yaw = self.to_right_handed(data.x, data.y, data.z, data.roll, data.pitch, data.yaw)
+            x = -x
+            z = -z
+
             recording_data = f"{x}, {y},{z},{roll},{pitch},{yaw}"
             m = f"Recording: {recording_data}"
             self.logger.info(m)
