@@ -3,7 +3,10 @@ from typing import Any, Optional, List, Dict
 from socketserver import BaseServer
 from triad_openvr import TriadOpenVR
 import logging
-from models import ViveTrackerMessage
+try:
+    from models import ViveTrackerMessage
+except:
+    from .models import ViveTrackerMessage
 import json
 from pprint import pprint
 
@@ -20,7 +23,7 @@ class ViveTrackerServer(socketserver.BaseRequestHandler):
                                                                                 tracker_name=tracker_name)
             return message
         else:
-            triad_openvr = self.reconnect_triad_vr()
+            self.triad_openvr = self.reconnect_triad_vr()
 
         return None
 
@@ -79,7 +82,7 @@ if __name__ == "__main__":
     logging.basicConfig(format='%(asctime)s - %(name)s '
                                '- %(levelname)s - %(message)s',
                         level=logging.DEBUG)
-    HOST, PORT = "192.168.1.8", 8000
+    HOST, PORT = "192.168.1.19", 8000
     server = socketserver.UDPServer((HOST, PORT), ViveTrackerServer)
     triad_openvr = ViveTrackerServer.reconnect_triad_vr()
     print("Server Started. Listening for client connection")
