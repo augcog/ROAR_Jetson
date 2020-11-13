@@ -36,7 +36,7 @@ class ViveTrackerServer(socketserver.BaseRequestHandler):
             euler = tracker.get_pose_euler()
             vel_x, vel_y, vel_z = tracker.get_velocity()
             x, y, z, yaw, pitch, roll = euler
-            message = ViveTrackerMessage(valid=True, x=x, y=y, z=z,
+            message = ViveTrackerMessage(valid=True, x=-x, y=y, z=z,
                                          yaw=yaw, pitch=pitch, roll=roll,
                                          vel_x=vel_x, vel_y=vel_y, vel_z=vel_z,
                                          device_name=tracker_name)
