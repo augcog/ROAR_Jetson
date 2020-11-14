@@ -11,7 +11,7 @@ import time
 
 
 class ViveTrackerClient:
-    def __init__(self, host, port, tracker_name, interval=0.1, buffer_length=1024):
+    def __init__(self, host, port, tracker_name, interval=0.05, buffer_length=350):
         self.host = host
         self.port = port
         self.tracker_name = tracker_name
@@ -31,13 +31,13 @@ class ViveTrackerClient:
             start = time.time()
             try:
                 self.socket.sendto(bytes(self.tracker_name + "\n", "utf-8"), (self.host, self.port))
-                received_message = str(self.socket.recv(1024), "utf-8")
+                received_message = str(self.socket.recv(self.buffer_length), "utf-8")
                 if received_message != '':
-
                     found_ending_char = ';' in received_message
                     if found_ending_char:
                         buffer = buffer + received_message[:-1]
                         self.update_latest_tracker_message(buffer)
+                        print(len(buffer))
                         buffer = ""
                     else:
                         buffer += received_message
@@ -68,7 +68,7 @@ class ViveTrackerClient:
             vive_tracker_message = ViveTrackerMessage.parse_obj(d)
             if vive_tracker_message.device_name == self.tracker_name:
                 self.latest_tracker_message = vive_tracker_message
-            # self.logger.info(self.latest_tracker_message)
+            self.logger.info(self.latest_tracker_message)
         except Exception as e:
             self.logger.error(f"Error: {e} \nMaybe it is related to unable to parse buffer [{buffer}]. ")
 

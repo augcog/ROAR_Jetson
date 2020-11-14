@@ -1,15 +1,16 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 import math
 
+
 class ViveTrackerMessage(BaseModel):
-    valid: bool = Field(default=False)
+    valid: int = Field(default=0)
     x: float = Field(default=0.0)
     y: float = Field(default=0.0)
     z: float = Field(default=0.0)
     roll: float = Field(default=0.0)
     pitch: float = Field(default=0.0)
     yaw: float = Field(default=0.0)
-    device_name: str = Field(default="Tracker")
+    device_name: str = Field(default="tracker_1")
     vel_x: float = Field(default=0.0)
     vel_y: float = Field(default=0.0)
     vel_z: float = Field(default=0.0)
@@ -22,3 +23,43 @@ class ViveTrackerMessage(BaseModel):
 
     def __str__(self):
         return self.__repr__()
+
+    @validator('x')
+    def round_x(cls, v):
+        return round(v, 3)
+
+    @validator('y')
+    def round_y(cls, v):
+        return round(v, 3)
+
+    @validator('z')
+    def round_z(cls, v):
+        return round(v, 3)
+
+    @validator('roll')
+    def round_roll(cls, v):
+        return round(v, 3)
+
+    @validator('pitch')
+    def round_pitch(cls, v):
+        return round(v, 3)
+
+    @validator('yaw')
+    def round_yaw(cls, v):
+        return round(v, 3)
+
+    @validator('vel_x')
+    def round_vel_x(cls, v):
+        return round(v, 3)
+
+    @validator('vel_y')
+    def round_vel_y(cls, v):
+        return round(v, 3)
+
+    @validator('vel_z')
+    def round_vel_z(cls, v):
+        return round(v, 3)
+
+    @validator('device_name')
+    def cat_devicename(cls, v):
+        return v[:9]
