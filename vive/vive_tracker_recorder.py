@@ -22,7 +22,7 @@ class ViveTrackerRecorder:
         self.interval = interval
         self.max_retry = max_retry
         self.triad_openvr: Optional[TriadOpenVR] = None
-        self.logger = logging.getLogger("Vive Tracker Publisher")
+        self.logger = logging.getLogger("Vive Tracker Recorder")
         self.initialize_openvr()
 
     def initialize_openvr(self):
@@ -75,8 +75,6 @@ class ViveTrackerRecorder:
     def record(self, data: ViveTrackerMessage):
         if data.device_name == self.tracker_name:
             x, y, z, roll, pitch, yaw = self.to_right_handed(data.x, data.y, data.z, data.roll, data.pitch, data.yaw)
-            x = -x
-            z = -z
 
             recording_data = f"{x}, {y},{z},{roll},{pitch},{yaw}"
             m = f"Recording: {recording_data}"
@@ -86,7 +84,7 @@ class ViveTrackerRecorder:
 
     @staticmethod
     def to_right_handed(x, y, z, roll, pitch, yaw):
-        return x, y, z, roll, pitch, yaw
+        return -x, y, -z, roll, pitch, yaw
 
     @staticmethod
     def construct_json_message(data: ViveTrackerMessage) -> str:
@@ -99,5 +97,5 @@ if __name__ == "__main__":
     logging.basicConfig(format='%(asctime)s - %(name)s '
                                '- %(levelname)s - %(message)s',
                         level=logging.DEBUG)
-    vive_tracker_publisher = ViveTrackerRecorder(output_dir_path=Path("./data"), tracker_name="tracker_1")
+    vive_tracker_publisher = ViveTrackerRecorder(output_dir_path=Path("./data"), tracker_name="tracker_2")
     vive_tracker_publisher.start()

@@ -36,13 +36,13 @@ class ViveTrackerServer(socketserver.BaseRequestHandler):
             euler = tracker.get_pose_euler()
             vel_x, vel_y, vel_z = tracker.get_velocity()
             x, y, z, yaw, pitch, roll = euler
-            message = ViveTrackerMessage(valid=True, x=-x, y=y, z=z,
+            message = ViveTrackerMessage(valid=True, x=-x, y=y, z=-z,
                                          yaw=yaw, pitch=pitch, roll=roll,
                                          vel_x=vel_x, vel_y=vel_y, vel_z=vel_z,
                                          device_name=tracker_name)
             return message
-        except:
-            print(f"Cannot find Tracker {tracker} is either offline or malfunctioned")
+        except Exception as e:
+            print(f"Cannot find Tracker {tracker} is either offline or malfunctioned. Error: {e}")
             self.triad_openvr = ViveTrackerServer.reconnect_triad_vr()
             return None
 
