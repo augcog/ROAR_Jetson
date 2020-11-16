@@ -7,7 +7,7 @@ class Configuration(BaseModel):
     pygame_display_height: int = Field(default=600)
     initiate_pygame: bool = Field(default=True)
     client_ip: str = Field(default="192.168.50.205")
-    win_serial_port: str = Field(default="COM4")
+    win_serial_port: str = Field(default="COM3")
     unix_serial_port: str = Field(default="/dev/ttyACM0")
     baud_rate: int = Field(default=9600)
     arduino_timeout: float = Field(default=0.5)

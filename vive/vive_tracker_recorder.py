@@ -80,7 +80,7 @@ class ViveTrackerRecorder:
             m = f"Recording: {recording_data}"
             self.logger.info(m)
             self.output_file.write(f"{x}, {y},{z},{roll},{pitch},{yaw}\n")
-        # data_to_send = self.construct_json_message(data=data)
+
 
     @staticmethod
     def to_right_handed(x, y, z, roll, pitch, yaw):
