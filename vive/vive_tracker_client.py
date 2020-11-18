@@ -30,7 +30,6 @@ class ViveTrackerClient:
         while True:
             try:
                 data, addr = self.socket.recvfrom(1024)  # buffer size is 1024 bytes
-                # print(data)
                 parsed_message, status = self.parse_message(data.decode())
                 if status:
                     self.update_latest_tracker_message(parsed_message=parsed_message)
@@ -57,8 +56,9 @@ class ViveTrackerClient:
             d = json.loads(json.loads(parsed_message))
             vive_tracker_message = ViveTrackerMessage.parse_obj(d)
             if vive_tracker_message.device_name == self.tracker_name:
+
                 self.latest_tracker_message = vive_tracker_message
-            # self.logger.debug(self.latest_tracker_message)
+            self.logger.debug(self.latest_tracker_message)
         except Exception as e:
             self.logger.error(f"Error: {e} \nMaybe it is related to unable to parse buffer [{parsed_message}]. ")
 
