@@ -7,5 +7,6 @@
     "vive_tracker_port": 8000,
     "vive_tracker_name": "tracker_1",
     "motor_max": 1600,
-    "motor_min": 1400
+    "motor_min": 1400,
+    "win_serial_port": "COM3"
 }

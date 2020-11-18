@@ -2,6 +2,7 @@ import socket
 import sys
 import logging
 from typing import Optional
+
 try:
     from ROAR_Jetson.vive.models import ViveTrackerMessage
 except:
@@ -9,6 +10,8 @@ except:
 import json
 import time
 from typing import Tuple
+import argparse
+
 
 class ViveTrackerClient:
     def __init__(self, host, port, tracker_name, interval=0.1, buffer_length=512):
@@ -56,25 +59,37 @@ class ViveTrackerClient:
             d = json.loads(json.loads(parsed_message))
             vive_tracker_message = ViveTrackerMessage.parse_obj(d)
             if vive_tracker_message.device_name == self.tracker_name:
-
                 self.latest_tracker_message = vive_tracker_message
-            self.logger.debug(self.latest_tracker_message)
+            # self.logger.debug(self.latest_tracker_message)
         except Exception as e:
             self.logger.error(f"Error: {e} \nMaybe it is related to unable to parse buffer [{parsed_message}]. ")
 
-    def parse_message(self, received_message:str) -> Tuple[str, bool]:
+    def parse_message(self, received_message: str) -> Tuple[str, bool]:
         start = received_message.find("&")
         end = received_message.find("\r")
         if start == -1 or end == -1:
             return "", False
         else:
-            return received_message[start+1:end], True
+            return received_message[start + 1:end], True
+
+
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format='%(asctime)s - %(name)s '
-                               '- %(levelname)s - %(message)s',
-                        level=logging.DEBUG)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--debug", default=False, help="debug flag", type=str2bool)
+    args = parser.parse_args()
+    logging.basicConfig(format='%(asctime)s|%(name)s|%(levelname)s|%(message)s',
+                        datefmt="%H:%M:%S", level=logging.DEBUG if args.debug is True else logging.INFO)
     HOST, PORT = "192.168.1.19", 8000
     client = ViveTrackerClient(host=HOST, port=PORT, tracker_name="tracker_1")
     client.update()
