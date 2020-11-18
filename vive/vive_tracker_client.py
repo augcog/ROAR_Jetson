@@ -1,3 +1,13 @@
+"""
+Defines Vive Tracker server. This script should run as is.
+
+Example usage:
+python vive_tracker_client.py --debug True
+
+For Vive Tracker Server implementation, please see
+https://github.com/wuxiaohua1011/ROAR_Desktop/blob/main/ROAR_Server/vive_tracker_server.py
+
+"""
 import socket
 import sys
 import logging
@@ -11,10 +21,23 @@ import json
 import time
 from typing import Tuple
 import argparse
+from pathlib import Path
 
 
 class ViveTrackerClient:
-    def __init__(self, host, port, tracker_name, interval=0.1, buffer_length=512):
+    """
+    Defines a vive tracker client that constantly polls message from (HOST, PORT)
+    and update its self.latest_tracker_message public variable
+
+    Other interacting script can initialize this ViveTracker Client as a sub-process and access its
+    latest_tracker_message for tracker data.
+
+    multiple vive tracker can be used at the same time by initializing multiple clients with different `tracker_name`
+    """
+    def __init__(self, host, port, tracker_name,
+                 interval: float = 0.1, buffer_length: int = 1024,
+                 should_record: bool = False,
+                 output_file_path: Path = Path("./data/RFS_Track.txt")):
         self.host = host
         self.port = port
         self.tracker_name = tracker_name
@@ -22,21 +45,42 @@ class ViveTrackerClient:
         self.buffer_length = buffer_length
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.settimeout(3)
-        self.latest_tracker_message = None
+        self.latest_tracker_message: Optional[ViveTrackerMessage] = None
+        self.should_record = should_record
+        self.output_file_path = output_file_path
+        self.output_file = None
+        if self.output_file_path.parent.exists() is False and self.should_record:
+            self.output_file_path.parent.mkdir(exist_ok=True, parents=True)
+            self.output_file = self.output_file_path.open('r')
+
         self.logger = logging.getLogger(f"Vive Tracker Client [{self.tracker_name}]")
         self.logger.info("Tracker Initialized")
 
     def update(self):
+        """
+        Updates the self.latest_vive_tracker_message field
+
+        Record  self.latest_vive_tracker_message if needed
+
+        Returns:
+            None
+        """
         self.logger.info(f"Start Subscribing to [{self.host}:{self.port}] "
                          f"for [{self.tracker_name}] Vive Tracker Updates")
         self.socket.bind((self.host, self.port))
         while True:
             try:
-                data, addr = self.socket.recvfrom(1024)  # buffer size is 1024 bytes
+                data, addr = self.socket.recvfrom(self.buffer_length)  # buffer size is 1024 bytes
                 parsed_message, status = self.parse_message(data.decode())
                 if status:
                     self.update_latest_tracker_message(parsed_message=parsed_message)
-
+                    if self.should_record:
+                        self.output_file.write(f'{self.latest_tracker_message.x},'
+                                               f'{self.latest_tracker_message.y},'
+                                               f'{self.latest_tracker_message.z},'
+                                               f'{self.latest_tracker_message.roll},'
+                                               f'{self.latest_tracker_message.pitch},'
+                                               f'{self.latest_tracker_message.yaw}\n')
             except socket.timeout:
                 self.logger.error("Timed out")
             except ConnectionResetError as e:
@@ -52,19 +96,48 @@ class ViveTrackerClient:
         pass
 
     def shutdown(self):
+        """
+        Safely shuts down the client and its connections
+        Returns:
+
+        """
         self.socket.close()
+        if self.output_file is not None:
+            self.output_file.close()
 
     def update_latest_tracker_message(self, parsed_message):
+        """
+        Given Vive Tracker message in JSON format, load json into dictionary format,
+        parse the tracker message using PyDantic
+
+        Assign self.latest_vive_tracker_message as the parsed result
+
+        Args:
+            parsed_message: tracker message in json format
+
+        Returns:
+            None
+        """
         try:
             d = json.loads(json.loads(parsed_message))
             vive_tracker_message = ViveTrackerMessage.parse_obj(d)
             if vive_tracker_message.device_name == self.tracker_name:
                 self.latest_tracker_message = vive_tracker_message
-            # self.logger.debug(self.latest_tracker_message)
+            self.logger.debug(self.latest_tracker_message)
         except Exception as e:
             self.logger.error(f"Error: {e} \nMaybe it is related to unable to parse buffer [{parsed_message}]. ")
 
     def parse_message(self, received_message: str) -> Tuple[str, bool]:
+        """
+        Parse the received message by ensuring that it start and end with special "handshake" characters
+
+        Args:
+            received_message: string format of the received bytes
+
+        Returns:
+            parsed received message in string and whether the parsing was successful
+
+        """
         start = received_message.find("&")
         end = received_message.find("\r")
         if start == -1 or end == -1:
@@ -91,5 +164,7 @@ if __name__ == "__main__":
     logging.basicConfig(format='%(asctime)s|%(name)s|%(levelname)s|%(message)s',
                         datefmt="%H:%M:%S", level=logging.DEBUG if args.debug is True else logging.INFO)
     HOST, PORT = "192.168.1.19", 8000
-    client = ViveTrackerClient(host=HOST, port=PORT, tracker_name="tracker_1")
+    client = ViveTrackerClient(host=HOST, port=PORT, tracker_name="tracker_1",
+                               output_file_path=Path("./data/RFS_Track.txt"),
+                               should_record=False)
     client.update()
