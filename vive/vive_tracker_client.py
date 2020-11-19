@@ -34,17 +34,30 @@ class ViveTrackerClient:
 
     multiple vive tracker can be used at the same time by initializing multiple clients with different `tracker_name`
     """
-    def __init__(self, host, port, tracker_name,
-                 interval: float = 0.1, buffer_length: int = 1024,
+
+    def __init__(self, host: str, port: int, tracker_name: str,
+                 time_out: float = 1, buffer_length: int = 1024,
                  should_record: bool = False,
                  output_file_path: Path = Path("./data/RFS_Track.txt")):
+        """
+
+        Args:
+            host: Server's LAN Host address. (Ex: 192.168.1.7)
+            port: Server's LAN Port address. (Ex: 8000)
+            tracker_name: Tracker name (Ex: tracker_1)
+            time_out: time out for socket's receive. Will reset socket on timeout
+            buffer_length: maximum length of data it can receive at once
+            should_record: enable recording of data
+            output_file_path: output file's path
+        """
         self.host = host
         self.port = port
-        self.tracker_name = tracker_name
-        self.interval = interval
+        self.tracker_name: str = tracker_name
+        self.time_out = time_out
         self.buffer_length = buffer_length
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.socket.settimeout(3)
+        self.socket: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 20)
+        self.socket.settimeout(self.time_out)
         self.latest_tracker_message: Optional[ViveTrackerMessage] = None
         self.should_record = should_record
         self.output_file_path = output_file_path
@@ -58,6 +71,10 @@ class ViveTrackerClient:
 
     def update(self):
         """
+        This client will send to the server the name of the tracker it is requesting
+
+        It will receive that tracker's information.
+
         Updates the self.latest_vive_tracker_message field
 
         Record  self.latest_vive_tracker_message if needed
@@ -67,9 +84,9 @@ class ViveTrackerClient:
         """
         self.logger.info(f"Start Subscribing to [{self.host}:{self.port}] "
                          f"for [{self.tracker_name}] Vive Tracker Updates")
-        self.socket.bind((self.host, self.port))
         while True:
             try:
+                _ = self.socket.sendto(self.tracker_name.encode(), (self.host, self.port))
                 data, addr = self.socket.recvfrom(self.buffer_length)  # buffer size is 1024 bytes
                 parsed_message, status = self.parse_message(data.decode())
                 if status:
@@ -81,12 +98,14 @@ class ViveTrackerClient:
                                                f'{self.latest_tracker_message.roll},'
                                                f'{self.latest_tracker_message.pitch},'
                                                f'{self.latest_tracker_message.yaw}\n')
+                else:
+                    self.logger.error(f"Failed to parse incoming message [{data.decode()}]")
             except socket.timeout:
                 self.logger.error("Timed out")
             except ConnectionResetError as e:
                 self.logger.error(f"Error: {e}. Retrying")
             except OSError as e:
-                pass
+                self.logger.error(e)
             except KeyboardInterrupt:
                 exit(1)
             except Exception as e:
@@ -127,7 +146,8 @@ class ViveTrackerClient:
         except Exception as e:
             self.logger.error(f"Error: {e} \nMaybe it is related to unable to parse buffer [{parsed_message}]. ")
 
-    def parse_message(self, received_message: str) -> Tuple[str, bool]:
+    @staticmethod
+    def parse_message(received_message: str) -> Tuple[str, bool]:
         """
         Parse the received message by ensuring that it start and end with special "handshake" characters
 
@@ -144,6 +164,20 @@ class ViveTrackerClient:
             return "", False
         else:
             return received_message[start + 1:end], True
+
+    @staticmethod
+    def initialize_socket() -> socket.socket:
+        soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        soc.settimeout(3)
+        soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            soc.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        except AttributeError:
+            pass  # Some systems don't support SO_REUSEPORT
+        soc.setsockopt(socket.SOL_IP, socket.IP_MULTICAST_TTL, 20)
+        soc.setsockopt(socket.SOL_IP, socket.IP_MULTICAST_LOOP, 1)
+
+        return soc
 
 
 def str2bool(v):
@@ -163,7 +197,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     logging.basicConfig(format='%(asctime)s|%(name)s|%(levelname)s|%(message)s',
                         datefmt="%H:%M:%S", level=logging.DEBUG if args.debug is True else logging.INFO)
-    HOST, PORT = "192.168.1.19", 8000
+    HOST, PORT = "192.168.42.6", 8000
     client = ViveTrackerClient(host=HOST, port=PORT, tracker_name="tracker_1",
                                output_file_path=Path("./data/RFS_Track.txt"),
                                should_record=False)
