@@ -120,7 +120,6 @@ class Vehicle:
             self.stop()
 
     def start_part_threads(self):
-        print(self.parts)
         for entry in self.parts:
             if entry.get('thread'):
                 # start the update thread

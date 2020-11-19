@@ -180,8 +180,8 @@ class RS_D435i(object):
                                            cx=intrinsics.ppx,
                                            cy=intrinsics.ppy,
                                            distortion_coefficient=intrinsics.coeffs)
-            cv2.imshow("frame", self.img)
-            cv2.waitKey(1)
+            # cv2.imshow("frame", self.img)
+            # cv2.waitKey(1)
             self.out_send.write(self.img)
 
         # Fetch IMU frame

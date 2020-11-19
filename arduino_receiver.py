@@ -43,7 +43,8 @@ class ArduinoReceiver:
                 rpm_throttle, rpm_steering = vel_wheel.split(",")
                 # self.logger.debug(f"rpm_throttle = {rpm_throttle} | rpm_steering = {rpm_steering}")
             except Exception as e:
-                self.logger.error(e)
+                pass
+                # self.logger.error(e)
             # vel_wheel = vel_wheel[2:][:-5]
             # vel_wheel = vel_wheel.split()
             # try:

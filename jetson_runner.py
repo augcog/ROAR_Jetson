@@ -151,7 +151,6 @@ class JetsonRunner:
 
                 self.jetson_vehicle.update_parts(new_throttle=vehicle_control.throttle,
                                                  new_steering=vehicle_control.steering)
-                # print(vehicle_control)
         except KeyboardInterrupt:
             self.logger.info("Keyboard Interrupt detected. Safely quitting")
             self.jetson_vehicle.stop()
@@ -185,7 +184,6 @@ class JetsonRunner:
             self.jetson_vehicle.rotation = sensors_data.vive_tracker_data.rotation.to_array()
             self.jetson_vehicle.velocity = sensors_data.vive_tracker_data.velocity.to_array()
         new_vehicle = self.jetson_bridge.convert_vehicle_from_source_to_agent(self.jetson_vehicle)
-        # print(new_vehicle.transform)
         return sensors_data, new_vehicle
 
     def update_pygame(self, clock) -> Tuple[bool, VehicleControl]:
