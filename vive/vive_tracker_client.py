@@ -197,7 +197,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     logging.basicConfig(format='%(asctime)s|%(name)s|%(levelname)s|%(message)s',
                         datefmt="%H:%M:%S", level=logging.DEBUG if args.debug is True else logging.INFO)
-    HOST, PORT = "192.168.42.6", 8000
+    HOST, PORT = "192.168.1.19", 9000
     client = ViveTrackerClient(host=HOST, port=PORT, tracker_name="tracker_1",
                                output_file_path=Path("./data/RFS_Track.txt"),
                                should_record=False)
