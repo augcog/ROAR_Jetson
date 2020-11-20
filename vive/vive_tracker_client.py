@@ -62,8 +62,9 @@ class ViveTrackerClient:
         self.should_record = should_record
         self.output_file_path = output_file_path
         self.output_file = None
-        if self.output_file_path.parent.exists() is False and self.should_record:
-            self.output_file_path.parent.mkdir(exist_ok=True, parents=True)
+        if self.should_record:
+            if self.output_file_path.parent.exists() is False:
+                self.output_file_path.parent.mkdir(exist_ok=True, parents=True)
             self.output_file = self.output_file_path.open('r')
 
         self.logger = logging.getLogger(f"Vive Tracker Client [{self.tracker_name}]")
@@ -198,7 +199,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     logging.basicConfig(format='%(asctime)s|%(name)s|%(levelname)s|%(message)s',
                         datefmt="%H:%M:%S", level=logging.DEBUG if args.debug is True else logging.INFO)
-    HOST, PORT = "192.168.1.19", 9000
+    HOST, PORT = "192.168.1.19", 8000
     client = ViveTrackerClient(host=HOST, port=PORT, tracker_name="tracker_1",
                                output_file_path=Path("./data/RFS_Track.txt"),
                                should_record=False)
