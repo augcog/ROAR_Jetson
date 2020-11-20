@@ -5,7 +5,7 @@ from ROAR.utilities_module.vehicle_models import VehicleControl
 
 
 class JetsonKeyboardControl(object):
-    def __init__(self, throttle_increment=0.01, steering_increment=0.01):
+    def __init__(self, throttle_increment=0.05, steering_increment=0.1):
         self.logger = logging.getLogger(__name__)
         self._steering_increment = steering_increment
         self._throttle_increment = throttle_increment

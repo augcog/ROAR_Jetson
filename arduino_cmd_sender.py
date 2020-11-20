@@ -49,6 +49,8 @@ class ArduinoCommandSender:
         self.agent_steering_range = agent_steering_range
         self.servo_throttle_range = servo_throttle_range
         self.servo_steering_range = servo_steering_range
+
+        self.forward_mode = True
         self.logger = logging.getLogger("Jetson CMD Sender")
         self.logger.debug("Jetson CMD Sender Initialized")
 
@@ -84,7 +86,16 @@ class ArduinoCommandSender:
         Returns:
             None
         """
+        if self.forward_mode and throttle < 0:
+            # servo
+            self.logger.debug("Switching to R")
+            self.forward_mode = False
+        if self.forward_mode is False and throttle > 0:
+            self.logger.debug("Switching to D")
+            self.forward_mode = True
 
+        self.prev_throttle = throttle
+        self.prev_steering = steering
         throttle_send, steering_send = self.map_control(throttle, steering)
         try:
             self.send_cmd_helper(new_throttle=throttle_send, new_steering=steering_send)
@@ -108,8 +119,7 @@ class ArduinoCommandSender:
         serial_msg = '& {} {}\r'.format(new_throttle, new_steering)
         # self.logger.debug(f"Sending [{serial_msg.rstrip()}]")
         self.serial.write(serial_msg.encode('ascii'))
-        self.prev_throttle = new_throttle
-        self.prev_steering = new_steering
+
 
     def shutdown(self):
         """
