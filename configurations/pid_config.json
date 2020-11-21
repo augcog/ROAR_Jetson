@@ -1,6 +1,6 @@
 {
   "longitudinal_controller": {
-    "10": {
+    "15": {
       "Kp": 1,
       "Kd": 0,
       "Ki": 0.5
