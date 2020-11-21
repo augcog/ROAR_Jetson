@@ -2,8 +2,8 @@
   "longitudinal_controller": {
     "6": {
       "Kp": 1,
-      "Kd": 0.2,
-      "Ki": 0.3
+      "Kd": 0,
+      "Ki": 0.5
     }
   },
   "latitudinal_controller": {
