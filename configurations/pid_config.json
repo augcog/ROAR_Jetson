@@ -2,7 +2,7 @@
   "longitudinal_controller": {
     "10": {
       "Kp": 1,
-      "Kd": 0,
+      "Kd": 0.1,
       "Ki": 0.5
     }
   },
