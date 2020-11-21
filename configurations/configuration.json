@@ -6,7 +6,7 @@
     "vive_tracker_host": "192.168.1.19",
     "vive_tracker_port": 8000,
     "vive_tracker_name": "tracker_1",
-    "motor_max": 1600,
-    "motor_min": 1400,
+    "motor_max": 1650,
+    "motor_min": 1350,
     "win_serial_port": "COM3"
 }
