@@ -196,11 +196,12 @@ def str2bool(v):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--debug", default=False, help="debug flag", type=str2bool)
+    parser.add_argument("--collect",default=False, help="debug flag", type=str2bool)
     args = parser.parse_args()
     logging.basicConfig(format='%(asctime)s|%(name)s|%(levelname)s|%(message)s',
                         datefmt="%H:%M:%S", level=logging.DEBUG if args.debug is True else logging.INFO)
     HOST, PORT = "192.168.1.19", 8000
     client = ViveTrackerClient(host=HOST, port=PORT, tracker_name="tracker_1",
                                output_file_path=Path("../data/RFS_Track.txt"),
-                               should_record=True)
+                               should_record=args.collect)
     client.update()
