@@ -58,6 +58,6 @@
   "spawn_point_id": 1,
   "show_sensors_data": false,
   "save_sensor_data": true,
-  "max_speed": 8
+  "max_speed": 4
 }
 
