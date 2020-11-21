@@ -66,7 +66,7 @@ class ViveTrackerClient:
             if self.output_file_path.parent.exists() is False:
                 self.output_file_path.parent.mkdir(exist_ok=True, parents=True)
             self.output_file = self.output_file_path.open('w')
-
+        self.count = 0
         self.logger = logging.getLogger(f"Vive Tracker Client [{self.tracker_name}]")
         self.logger.info("Tracker Initialized")
 
@@ -93,12 +93,14 @@ class ViveTrackerClient:
                 if status:
                     self.update_latest_tracker_message(parsed_message=parsed_message)
                     if self.should_record:
-                        self.output_file.write(f'{self.latest_tracker_message.x},'
-                                               f'{self.latest_tracker_message.y},'
-                                               f'{self.latest_tracker_message.z},'
-                                               f'{self.latest_tracker_message.roll},'
-                                               f'{self.latest_tracker_message.pitch},'
-                                               f'{self.latest_tracker_message.yaw}\n')
+                        if self.count % 10 == 0:
+                            self.output_file.write(f'{self.latest_tracker_message.x},'
+                                                   f'{self.latest_tracker_message.y},'
+                                                   f'{self.latest_tracker_message.z},'
+                                                   f'{self.latest_tracker_message.roll},'
+                                                   f'{self.latest_tracker_message.pitch},'
+                                                   f'{self.latest_tracker_message.yaw}\n')
+                    self.count += 1
                 else:
                     self.logger.error(f"Failed to parse incoming message [{data.decode()}]")
             except socket.timeout:
