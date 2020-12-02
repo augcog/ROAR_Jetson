@@ -147,6 +147,7 @@ void parseData(String method){
      *  For example, by default, HANDSHAKE_START= "(", HANDSHAKE_END=")"
      *  Then a sample receivedData could be (1500,1500)
     */
+    
     if (method.compareTo("serial") == 0){
       size_t bytes_read = Serial.readBytesUntil(HANDSHAKE_END, receivedData, 100); //reads serial data into buffer and times out after 100ms
     } else if (method.compareTo("serial1") == 0){
@@ -166,6 +167,11 @@ void parseData(String method){
         steering_write = steering_read;
       }
     }
+
+    Serial.print(throttle_write);
+    Serial.print(" ");
+    Serial.print(steering_write);
+    Serial.println(" ");
 }
 
 void writeToSerial(){

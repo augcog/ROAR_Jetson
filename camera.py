@@ -167,6 +167,7 @@ class RS_D435i(object):
             self.img = np.asanyarray(color_frame.get_data())
             self.dimg = np.asanyarray(depth_frame.get_data())
             if self.depth_camera_intrinsics is None:
+
                 intrinsics = depth_frame.profile.as_video_stream_profile().intrinsics
                 self._set_depth_camera_specs(fx=intrinsics.fx,
                                              fy=intrinsics.fy,
