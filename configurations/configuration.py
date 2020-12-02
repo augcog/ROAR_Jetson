@@ -19,11 +19,11 @@ class Configuration(BaseModel):
     theta_min: int = Field(default=1000)
     command_throttle: int = Field(default=0)
     command_steering: int = Field(default=1)
-    upd_port: int = Field(default=7788)
 
     vive_tracker_host: str = Field(default="127.0.0.1")
     vive_tracker_port: int = Field(default=8000)
     vive_tracker_name: str = Field(default="Tracker")
 
+    agent_config_path: str = Field(default="./ROAR_Jetson/configurations/agent_configuration.json")
 
 

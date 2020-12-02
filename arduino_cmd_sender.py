@@ -120,7 +120,6 @@ class ArduinoCommandSender:
         # self.logger.debug(f"Sending [{serial_msg.rstrip()}]")
         self.serial.write(serial_msg.encode('ascii'))
 
-
     def shutdown(self):
         """
         Ensure the device is shut down properly by sending neutral cmd 5 times
@@ -148,3 +147,11 @@ class ArduinoCommandSender:
                 int(np.interp(x=steering,
                               xp=self.agent_steering_range,
                               fp=self.servo_steering_range)))
+
+
+if __name__ == '__main__':
+    serial_connection = Serial("PORT ADDRESS HERE", baudrate=9600, timeout=0.5, writeTimeout=0.5)
+    arduino_cmd_sender = ArduinoCommandSender(serial=serial_connection)
+    for i in range(10):
+        arduino_cmd_sender.run_threaded(throttle=1, steering=1)
+        time.sleep(1)  # you cant send too fast!
