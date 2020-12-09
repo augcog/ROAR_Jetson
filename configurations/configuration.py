@@ -26,4 +26,6 @@ class Configuration(BaseModel):
 
     agent_config_path: str = Field(default="./ROAR_Jetson/configurations/agent_configuration.json")
 
+    throttle_reversed: str = Field(default=False)
+
 

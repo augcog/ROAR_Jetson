@@ -91,6 +91,7 @@ class JetsonRunner:
 
         try:
             self.jetson_vehicle.add(ArduinoCommandSender(serial=self.serial,
+                                                         throttle_reversed=self.jetson_config.throttle_reversed,
                                                          servo_throttle_range=[self.jetson_config.motor_min,
                                                                                self.jetson_config.motor_max],
                                                          servo_steering_range=[self.jetson_config.theta_min,

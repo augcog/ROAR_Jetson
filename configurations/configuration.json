@@ -8,5 +8,6 @@
     "vive_tracker_name": "tracker_1",
     "motor_max": 1650,
     "motor_min": 1350,
-    "win_serial_port": "COM3"
+    "win_serial_port": "COM13",
+    "throttle_reversed": true
 }
