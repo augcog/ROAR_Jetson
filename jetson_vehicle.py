@@ -10,7 +10,7 @@ import time
 from threading import Thread
 from ROAR_Jetson.arduino_cmd_sender import ArduinoCommandSender
 import logging
-from ROAR_Jetson.camera import RS_D435i
+from ROAR_Jetson.camera import RS_D435i, RS_T265
 from typing import Optional, List
 import numpy as np
 from ROAR_Jetson.arduino_receiver import ArduinoReceiver
@@ -148,6 +148,8 @@ class Vehicle:
                     self.throttle, self.steering = new_throttle, new_steering
                 elif entry.get('thread') and isinstance(p, RS_D435i):
                     self.front_rgb_img, self.front_depth_img = p.run_threaded()
+                elif isinstance(p, RS_T265):
+                    self.location, self.rotation = p.run_threaded()
                 elif isinstance(p, ArduinoReceiver):
                     p.run_threaded()
                 elif isinstance(p, ViveTrackerClient):

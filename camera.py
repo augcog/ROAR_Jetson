@@ -6,7 +6,8 @@ from PIL import Image
 import glob
 import logging
 import pyrealsense2 as rs
-from typing import Optional
+from typing import Optional,Tuple
+import math as m
 
 
 class BaseCamera:
@@ -233,6 +234,57 @@ class RS_D435i(object):
         self.rgb_camera_distortion_coefficients = distortion_coefficient
 
 
+class RS_T265(object):
+    def __init__(self):
+        self.pipe = rs.pipeline()
+        self.cfg = rs.config()
+        self.cfg.enable_stream(rs.stream.pose)
+        self.location: np.ndarray = np.array([0, 0, 0])  # x y z
+        self.rotation: np.ndarray = np.array([0, 0, 0])  # pitch yaw roll
+        self.velocity: np.ndarray = np.array([0, 0, 0])  # x y z
+        self.acceleration: np.ndarray = np.array([0, 0, 0])  # x y z
+
+    def poll(self):
+        try:
+            frames = self.pipe.wait_for_frames()
+            pose = frames.get_pose_frame()
+            if pose:
+                # Print some of the pose data to the terminal
+                data = pose.get_pose_data()
+                w = data.rotation.w
+                x = -data.rotation.z
+                y = data.rotation.x
+                z = -data.rotation.y
+
+                pitch = -m.asin(2.0 * (x * z - w * y)) * 180.0 / m.pi
+                roll = m.atan2(2.0 * (w * x + y * z), w * w - x * x - y * y + z * z) * 180.0 / m.pi
+                yaw = m.atan2(2.0 * (w * z + x * y), w * w + x * x - y * y - z * z) * 180.0 / m.pi
+
+                translation: rs.vector = data.translation
+                velocity: rs.vector = data.velocity
+                acce: rs.vector = data.acceleration
+
+                self.location = np.array([translation.x, translation.y, translation.z])
+                self.rotation = np.array([pitch, yaw, roll])
+                self.velocity = np.array([velocity.x, velocity.y, velocity.z])
+                self.acceleration = np.array([acce.x, acce.y, acce.z])
+        except Exception as e:
+            logging.error(e)
+            return
+
+    def run_in_series(self):
+        self.pipe.start(self.cfg)
+        while True:
+            self.poll()
+
+    def run_threaded(self) -> Tuple[np.ndarray,np.ndarray]:
+        try:
+            self.poll()
+            return self.location, self.rotation
+        except KeyboardInterrupt as e:
+            raise e
+        except Exception as e:
+            return self.location, self.rotation
 if __name__ == "__main__":
-    realsense_cam = RS_D435i()
-    realsense_cam.update()
+    t265 = RS_T265()
+    t265.run_in_series()

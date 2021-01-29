@@ -26,4 +26,8 @@ class Configuration(BaseModel):
 
     agent_config_path: str = Field(default="./ROAR_Jetson/configurations/agent_configuration.json")
 
+    use_vive_tracker: bool = Field(default=False)
+    use_d435i: bool = Field(default=True)
+    use_t265: bool = Field(default=True)
+    use_arduino: bool = Field(default=True)
 

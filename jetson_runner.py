@@ -88,7 +88,37 @@ class JetsonRunner:
         Returns:
             None
         """
+        if self.jetson_config.use_arduino:
+            self._setup_arduino()
+        if self.jetson_config.use_d435i:
+            self._setup_d435i()
+        if self.jetson_config.use_t265:
+            self._setup_t265()
+        if self.jetson_config.use_vive_tracker:
+            self._setup_vive_tracker()
 
+    def _setup_t265(self):
+        pass
+
+    def _setup_vive_tracker(self):
+        try:
+            self.vive_tracker = ViveTrackerClient(host=self.jetson_config.vive_tracker_host,
+                                                  port=self.jetson_config.vive_tracker_port,
+                                                  tracker_name=self.jetson_config.vive_tracker_name)
+            self.jetson_vehicle.add(self.vive_tracker, threaded=True)
+        except Exception as e:
+            self.logger.error(f"Failed to initalize Vive Tracker: {e}")
+
+    def _setup_d435i(self):
+        try:
+            self.rs_d435i = RS_D435i(image_w=self.agent.front_rgb_camera.image_size_x,
+                                     image_h=self.agent.front_rgb_camera.image_size_y,
+                                     image_output=True)
+            self.jetson_vehicle.add(self.rs_d435i, threaded=True)
+        except Exception as e:
+            self.logger.error(f"Unable to connect to Intel Realsense: {e}")
+
+    def _setup_arduino(self):
         try:
             self.jetson_vehicle.add(ArduinoCommandSender(serial=self.serial,
                                                          servo_throttle_range=[self.jetson_config.motor_min,
@@ -98,25 +128,12 @@ class JetsonRunner:
                                     inputs=['throttle', 'steering'], threaded=True)
         except Exception as e:
             self.logger.error(f"Ignoring Error during ArduinoCommandSender set up: {e}")
-        try:
-            self.jetson_vehicle.add(ArduinoReceiver(serial=self.serial, client_ip=self.jetson_config.client_ip), threaded=True)
-        except Exception as e:
-            self.logger.error(f"Ignoring Error during ArduinoReceiver setup: {e}")
-        try:
-            self.rs_d435i = RS_D435i(image_w=self.agent.front_rgb_camera.image_size_x,
-                                     image_h=self.agent.front_rgb_camera.image_size_y,
-                                     image_output=True)
-            self.jetson_vehicle.add(self.rs_d435i, threaded=True)
-        except Exception as e:
-            self.logger.error(f"Unable to connect to Intel Realsense: {e}")
 
         try:
-            self.vive_tracker = ViveTrackerClient(host=self.jetson_config.vive_tracker_host,
-                                                  port=self.jetson_config.vive_tracker_port,
-                                                  tracker_name=self.jetson_config.vive_tracker_name)
-            self.jetson_vehicle.add(self.vive_tracker, threaded=True)
+            self.jetson_vehicle.add(ArduinoReceiver(serial=self.serial, client_ip=self.jetson_config.client_ip),
+                                    threaded=True)
         except Exception as e:
-            self.logger.error(f"Failed to initalize Vive Tracker: {e}")
+            self.logger.error(f"Ignoring Error during ArduinoReceiver setup: {e}")
 
     def start_game_loop(self, use_manual_control=False):
         self.logger.info("Starting Game Loop")
@@ -208,9 +225,10 @@ class JetsonRunner:
         return self.controller.parse_events(clock=clock)
 
     def _assign_camera_intrinsics(self):
-        if self.rs_d435i.depth_camera_intrinsics is not None:
-            self.agent.front_depth_camera.intrinsics_matrix = self.rs_d435i.depth_camera_intrinsics
-            self.agent.front_depth_camera.distortion_coefficient = self.rs_d435i.depth_camera_distortion_coefficients
-        if self.rs_d435i.rgb_camera_intrinsics is not None:
-            self.agent.front_rgb_camera.intrinsics_matrix = self.rs_d435i.rgb_camera_intrinsics
-            self.agent.front_rgb_camera.distortion_coefficient = self.rs_d435i.rgb_camera_distortion_coefficients
+        if self.rs_d435i is not None:
+            if self.rs_d435i.depth_camera_intrinsics is not None:
+                self.agent.front_depth_camera.intrinsics_matrix = self.rs_d435i.depth_camera_intrinsics
+                self.agent.front_depth_camera.distortion_coefficient = self.rs_d435i.depth_camera_distortion_coefficients
+            if self.rs_d435i.rgb_camera_intrinsics is not None:
+                self.agent.front_rgb_camera.intrinsics_matrix = self.rs_d435i.rgb_camera_intrinsics
+                self.agent.front_rgb_camera.distortion_coefficient = self.rs_d435i.rgb_camera_distortion_coefficients

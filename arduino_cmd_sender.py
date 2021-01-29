@@ -69,12 +69,12 @@ class ArduinoCommandSender:
         Returns:
             None
         """
-
-        if self.last_cmd_time is None:
-            self.last_cmd_time = time.time()
-        elif time.time() - self.last_cmd_time > self.min_command_time_gap:
-            self.send_cmd(throttle=throttle, steering=steering)
-            self.last_cmd_time = time.time()
+        if self.serial is not None:
+            if self.last_cmd_time is None:
+                self.last_cmd_time = time.time()
+            elif time.time() - self.last_cmd_time > self.min_command_time_gap:
+                self.send_cmd(throttle=throttle, steering=steering)
+                self.last_cmd_time = time.time()
 
     def send_cmd(self, throttle, steering):
         """
