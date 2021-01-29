@@ -22,13 +22,15 @@ class ArduinoCommandSender:
                  agent_throttle_range: Optional[List] = None,
                  agent_steering_range: Optional[List] = None,
                  servo_throttle_range: Optional[List] = None,
-                 servo_steering_range: Optional[List] = None):
+                 servo_steering_range: Optional[List] = None,
+                 throttle_reversed = False):
         """
         Initialize parameters.
 
         Args:
             min_command_time_gap: minimum command duration between two commands
         """
+        self.throttle_reversed = throttle_reversed
         if agent_steering_range is None:
             agent_steering_range = [-1, 1]
         if agent_throttle_range is None:
@@ -94,6 +96,8 @@ class ArduinoCommandSender:
             self.logger.debug("Switching to D")
             self.forward_mode = True
 
+        if self.throttle_reversed:
+            throttle = -1 * throttle
         self.prev_throttle = throttle
         self.prev_steering = steering
         throttle_send, steering_send = self.map_control(throttle, steering)
@@ -116,7 +120,7 @@ class ArduinoCommandSender:
 
         """
         # if self.prev_throttle != new_throttle or self.prev_steering != new_steering:
-        serial_msg = '& {} {}\r'.format(new_throttle, new_steering)
+        serial_msg = '({},{})'.format(new_throttle, new_steering)
         # self.logger.debug(f"Sending [{serial_msg.rstrip()}]")
         self.serial.write(serial_msg.encode('ascii'))
 
