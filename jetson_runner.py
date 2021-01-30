@@ -8,7 +8,7 @@ from ROAR_Jetson.arduino_cmd_sender import ArduinoCommandSender
 from ROAR.agent_module.agent import Agent
 from ROAR.utilities_module.data_structures_models import Transform
 from Bridges.jetson_bridge import JetsonBridge
-from ROAR_Jetson.camera import RS_D435i
+from ROAR_Jetson.camera import RS_D435i, RS_T265
 import logging
 import pygame
 from ROAR_Jetson.jetson_keyboard_control import JetsonKeyboardControl
@@ -42,6 +42,7 @@ class JetsonRunner:
         self.transform = Transform()
         self.controller = JetsonKeyboardControl()
         self.rs_d435i: Optional[RS_D435i] = None
+        self.t265: Optional[RS_T265] = None
         self.vive_tracker: Optional[ViveTrackerClient] = None
 
         if jetson_config.initiate_pygame:
@@ -98,7 +99,11 @@ class JetsonRunner:
             self._setup_vive_tracker()
 
     def _setup_t265(self):
-        pass
+        try:
+            self.t265 = RS_T265()
+            self.jetson_vehicle.add(self.t265, threaded=True)
+        except Exception as e:
+            self.logger.error(f"Failed to initalize Vive Tracker: {e}")
 
     def _setup_vive_tracker(self):
         try:
@@ -193,6 +198,7 @@ class JetsonRunner:
                 "rear_rgb": None,
                 "front_depth": self.jetson_vehicle.front_depth_img,
                 "imu": None,
+                "t265_tracking": self.t265,
                 "vive_tracking": self.vive_tracker.latest_tracker_message
                 if self.vive_tracker is not None and self.vive_tracker.latest_tracker_message is not None else None
             }

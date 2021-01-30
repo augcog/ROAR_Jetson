@@ -273,7 +273,7 @@ class RS_T265(object):
             logging.error(e)
             return
 
-    def run_in_series(self):
+    def update(self):
         self.pipe.start(self.cfg)
         while True:
             self.poll()
@@ -288,4 +288,4 @@ class RS_T265(object):
             return self.location, self.rotation
 if __name__ == "__main__":
     t265 = RS_T265()
-    t265.run_in_series()
+    t265.update()
