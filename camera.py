@@ -286,6 +286,3 @@ class RS_T265(object):
             raise e
         except Exception as e:
             return self.location, self.rotation
-if __name__ == "__main__":
-    t265 = RS_T265()
-    t265.update()
