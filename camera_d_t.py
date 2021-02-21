@@ -5,6 +5,7 @@ import pyrealsense2 as rs
 import math as m
 import numpy as np
 import sys
+from typing import Optional
 
 CAM_CONFIG = {
     "image_w": 848,
@@ -17,9 +18,11 @@ CAM_CONFIG = {
     "detect_mode": False
 }
 
+
 class RS_D_T(object):
 
-    def __init__(self, image_w=CAM_CONFIG["image_w"], image_h=CAM_CONFIG["image_h"], framerate=CAM_CONFIG["framerate"], GUI=True) -> None:
+    def __init__(self, image_w=CAM_CONFIG["image_w"], image_h=CAM_CONFIG["image_h"], framerate=CAM_CONFIG["framerate"],
+                 GUI=True) -> None:
         self.logger = logging.getLogger("Intel RealSense D435i")
         self.logger.debug("Initiating Intel Realsense")
 
@@ -37,15 +40,18 @@ class RS_D_T(object):
         cfg_t.enable_stream(rs.stream.pose)
         self.location: np.ndarray = np.array([0, 0, 0])  # x y z
         self.rotation: np.ndarray = np.array([0, 0, 0])  # pitch yaw roll
+        self.velocity: np.ndarray = np.array([0, 0, 0])  # x y z
+        self.acceleration: np.ndarray = np.array([0, 0, 0])  # x y z
         # Start streaming with requested config
         self.prof_d, self.prof_t = None, None
+        self.aligned_d = rs.align(rs.stream.color)
         try:
             self.prof_d = self.pipe_d.start(cfg_d)
             self.prof_t = self.pipe_t.start(cfg_t)
         except Exception as e:
             self.stop()
             raise ConnectionError(f"Error {e}. Pipeline Initialization Error")
- 
+
         self.running = True
 
         camera_intr = self.prof_d.get_stream(rs.stream.color).as_video_stream_profile().get_intrinsics()
@@ -61,6 +67,8 @@ class RS_D_T(object):
         self.detect_mode = CAM_CONFIG['detect_mode']
 
         self.c2c, self.c2m = None, None
+        self.color_frame: Optional[np.ndarray] = None
+        self.depth_frame: Optional[np.ndarray] = None
 
         self.logger.info("Camera Initiated")
 
@@ -77,26 +85,33 @@ class RS_D_T(object):
 
     def start_detect(self):
         self.detect_mode = True
-    
+
     def stop_detect(self):
         self.detect_mode = False
 
     def poll(self):
         try:
+
             frame_d = self.pipe_d.wait_for_frames()
+            aligned_frames = self.aligned_d.proccess(frame_d)
             frame_t = self.pipe_t.wait_for_frames()
 
             pose_frame = frame_t.get_pose_frame()
-            color_frame = frame_d.get_color_frame()
+            self.color_frame = aligned_frames.first(rs.stream.color)
+            self.depth_frame = aligned_frames.get_depth_frame()
 
-            if color_frame:
-                img = np.asanyarray(color_frame.get_data())
+            if self.color_frame:
+                img = np.asanyarray(self.color_frame.get_data())
             else:
                 return None
 
             if pose_frame:
                 data = pose_frame.get_pose_data()
                 t = data.translation
+                velocity: rs.vector = data.velocity
+                acce: rs.vector = data.acceleration
+                t_vvec = np.array([velocity.x, velocity.y, velocity.z,  1])
+                t_accvvec = np.array([acce.x, acce.y, acce.z, 1])
                 t_tvec = np.array([t.x, t.y, t.z, 1])
                 t_rvec = data.rotation
             else:
@@ -104,20 +119,26 @@ class RS_D_T(object):
 
             if self.c2m is None:
                 c2m, tvec, rvec = self.get_trans_mat(img)
-                if c2m is not None:  
+                if c2m is not None:
                     self.c2m = c2m
                     self.c2c = self.cam2cam(t_rvec)
                     self.location = (self.c2m @ self.c2c @ t_tvec)[:3]
+                    self.velocity = (self.c2m @ self.c2c @ t_vvec)[:3]
+                    self.acceleration = (self.c2m @ self.c2c @ t_accvvec)[:3]
+
             else:
                 self.location = (self.c2m @ self.c2c @ t_tvec)[:3]
+                self.velocity = (self.c2m @ self.c2c @ t_vvec)[:3]
+                self.acceleration = (self.c2m @ self.c2c @ t_accvvec)[:3]
 
             if self.show_gui:
                 if self.detect_mode:
                     c2m, tvec, _ = self.get_trans_mat(img)
                     if tvec is not None:
-                        cv2.putText(img, str((c2m @ [0,0,0,1])[:3]), (0, 64), self.font, 1, (255,255,0), 2, self.line_type)  
-                        
-                cv2.putText(img, str(self.location), (0, 40), self.font, 1, (0,255,255), 2, self.line_type)
+                        cv2.putText(img, str((c2m @ [0, 0, 0, 1])[:3]), (0, 64), self.font, 1, (255, 255, 0), 2,
+                                    self.line_type)
+
+                cv2.putText(img, str(self.location), (0, 40), self.font, 1, (0, 255, 255), 2, self.line_type)
 
                 cv2.imshow("frame", img)
                 key = cv2.waitKey(100)
@@ -135,12 +156,20 @@ class RS_D_T(object):
             self.stop()
             return None
 
+    def run_threaded(self):
+        while True:
+            try:
+                self.poll()
+            except Exception as e:
+                self.logger.error(e)
+
     """
     This is a transformation from the d-camera's coord system to the marker's (world) system
     rvec and tvec are derived from the black-box algorithm in cv2.aruco, they represent some 
     important quantities from marker to d-camera. Since we want to extract the reverse transformation,
     we invert the matrix at the end.
     """
+
     def cam2marker(self, rvec, tvec):
         rmat = cv2.Rodrigues(rvec)[0]
         trans_mat = np.identity(4)
@@ -157,24 +186,25 @@ class RS_D_T(object):
     2) there's still some minor translation between their coordinate systems, which will
     be implemented later :TODO @Star
     """
+
     def cam2cam(self, t_rvec):
         # no tuning of the t camera rotation
         if self.use_default_cam2cam:
-            return np.array([1,0,0,0,
-                             0,-1,0,0,
-                             0,0,-1,0,
-                             0,0,0,1]).reshape((4, 4))
+            return np.array([1, 0, 0, 0,
+                             0, -1, 0, 0,
+                             0, 0, -1, 0,
+                             0, 0, 0, 1]).reshape((4, 4))
         else:
             trans_mat = np.zeros((4, 4))
-            trans_mat[:3,:3] = cv2.Rodrigues(t_rvec)[0]
-            trans_mat[3,3] = 1
+            trans_mat[:3, :3] = cv2.Rodrigues(t_rvec)[0]
+            trans_mat[3, 3] = 1
             trans_mat = np.linalg.inv(trans_mat)
             return trans_mat
 
     def get_trans_mat(self, img):
         corners, ids, _ = aruco.detectMarkers(img, self.aruco_dict, parameters=self.parameters)
-        if ids: # there's at least one aruco marker in sight
-            rvec, tvec ,_ = aruco.estimatePoseSingleMarkers(corners, self.block_size, self.rgb_mtx, self.rgb_dist)
+        if ids:  # there's at least one aruco marker in sight
+            rvec, tvec, _ = aruco.estimatePoseSingleMarkers(corners, self.block_size, self.rgb_mtx, self.rgb_dist)
             c2m = self.cam2marker(rvec, tvec)
 
             if self.show_gui:
@@ -184,6 +214,7 @@ class RS_D_T(object):
             return c2m, tvec, rvec
         else:
             return None, None, None
+
 
 if __name__ == '__main__':
     camera = RS_D_T()
