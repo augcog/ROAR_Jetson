@@ -31,22 +31,21 @@ class RS_D_T(object):
         self.line_type = cv2.LINE_AA
         # Declare RealSense pipeline, encapsulating the actual device and sensors
         self.pipe_d = rs.pipeline()
-        cfg_d = rs.config()
-        cfg_d.enable_stream(rs.stream.color, image_w, image_h, rs.format.bgr8, framerate)  # color camera
+        self.cfg_d = rs.config()
+        self.cfg_d.enable_stream(rs.stream.color, image_w, image_h, rs.format.bgr8, framerate)  # color camera
 
         # init for the t camera
         self.pipe_t = rs.pipeline()
-        cfg_t = rs.config()
-        cfg_t.enable_stream(rs.stream.pose)
+        self.cfg_t = rs.config()
+        self.cfg_t.enable_stream(rs.stream.pose)
         self.location: np.ndarray = np.array([0, 0, 0])  # x y z
         self.rotation: np.ndarray = np.array([0, 0, 0])  # pitch yaw roll
         # Start streaming with requested config
         self.prof_d, self.prof_t = None, None
         try:
-            self.prof_d = self.pipe_d.start(cfg_d)
-            self.prof_t = self.pipe_t.start(cfg_t)
+            self.prof_d = self.pipe_d.start(self.cfg_d)
+            self.prof_t = self.pipe_t.start(self.cfg_t)
         except Exception as e:
-            self.stop()
             raise ConnectionError(f"Error {e}. Pipeline Initialization Error")
  
         self.running = True
@@ -88,15 +87,16 @@ class RS_D_T(object):
 
             rpy = self.rvec_to_rpy(t_rvec)
 
+            # rpy[0] == roll, rpy[2] == yaw
             if show_img:
-                t_flag = max(rpy[0], rpy[2]) > self.calibrate_thres
+                t_flag = max(abs(rpy[0]), abs(rpy[2])) > self.calibrate_thres
                 if t_flag:
                     boo, bar = round(rpy[0], 3), round(rpy[2], 3)
                     t_msg = "roll: {}, yall: {} | expected: both < 1".format(boo, bar)
                 else:
                     t_msg = "calibration angles are correct"
 
-                d2m, tvec, rvec = self.get_trans_mat(img)
+                d2m, _, _ = self.get_trans_mat(img)
 
                 d_flag = d2m is None
                 if d_flag:
@@ -114,6 +114,7 @@ class RS_D_T(object):
                     self.t2d = self.cam2cam(t_rvec, t_tvec)
                     self.t2m = self.d2m @ self.t2d 
                     self.calibrated = True
+                    self.restart(t_cam=True)
                     print("calibration success: matrices loaded")
             else:
                 # sleep for the command line mode since 
@@ -131,6 +132,7 @@ class RS_D_T(object):
                     self.t2d = self.cam2cam(t_rvec, t_tvec)
                     self.t2m = self.d2m @ self.t2d 
                     self.calibrated = True
+                    self.restart(t_cam=True)
                     print("calibration success: matrices loaded")
 
 
@@ -144,6 +146,17 @@ class RS_D_T(object):
         self.pipe_d.stop()
         self.pipe_t.stop()
         self.logger.debug("Shutting Down")
+
+    def restart(self, t_cam=False, d_cam=False):
+        try:
+            if t_cam:
+                self.pipe_t.stop()
+                self.prof_t = self.pipe_t.start(self.cfg_t)
+            if d_cam:
+                self.pipe_d.stop()
+                self.prof_d = self.pipe_d.start(self.cfg_d)
+        except Exception as e:
+            raise ConnectionError(f"Error {e}. Pipeline Initialization Error")
 
     def start_detect(self):
         self.detect_mode = True
