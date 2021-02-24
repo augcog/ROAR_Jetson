@@ -8,38 +8,45 @@ import sys
 import time
 
 CAM_CONFIG = {
-    "image_w": 848,
-    "image_h": 480,
-    "framerate": 30,
-    "aruco_dict": aruco.DICT_5X5_250,
-    "aruco_thres": 10,
-    "aruco_block_size": 0.1592,
-    "use_default_cam2cam": True,
-    "detect_mode": False,
-    # calibrate threshold in degree
-    "calibrate_threshold": 1
+    "image_w": 848, # image width
+    "image_h": 480, # image height
+    "framerate": 30, # frame rate 
+    "aruco_dict": aruco.DICT_5X5_250, # dictionary used in aruco
+    "aruco_thres": 10, # aruco marker threshold, internal parameter
+    "aruco_block_size": 0.1592, # length of aruco marker's side in meter
+    "use_default_cam2cam": True, # recommended true, no rotation is calculated
+    "detect_mode": False, # useful only in show_gui mode where a aruco-marker detection reference is given
+    "calibrate_threshold": 3 # calibrate threshold in degree
 }
 
 class RS_D_T(object):
 
-    def __init__(self, image_w=CAM_CONFIG["image_w"], image_h=CAM_CONFIG["image_h"], framerate=CAM_CONFIG["framerate"], GUI=True) -> None:
+    def __init__(self, image_w=CAM_CONFIG["image_w"], image_h=CAM_CONFIG["image_h"], framerate=CAM_CONFIG["framerate"], show_gui=True) -> None:
         self.logger = logging.getLogger("Intel RealSense D435i")
         self.logger.debug("Initiating Intel Realsense")
 
-        self.show_gui = GUI
+        self.show_gui = show_gui
         self.font = cv2.FONT_HERSHEY_SIMPLEX
         self.line_type = cv2.LINE_AA
         # Declare RealSense pipeline, encapsulating the actual device and sensors
         self.pipe_d = rs.pipeline()
         self.cfg_d = rs.config()
         self.cfg_d.enable_stream(rs.stream.color, image_w, image_h, rs.format.bgr8, framerate)  # color camera
+        self.cfg_d.enable_stream(rs.stream.depth, image_w, image_h, rs.format.z16, framerate) # depth camera
 
         # init for the t camera
         self.pipe_t = rs.pipeline()
         self.cfg_t = rs.config()
         self.cfg_t.enable_stream(rs.stream.pose)
+
         self.location: np.ndarray = np.array([0, 0, 0])  # x y z
         self.rotation: np.ndarray = np.array([0, 0, 0])  # pitch yaw roll
+        self.velocity: np.ndarray = np.array([0, 0, 0])  # x y z
+        self.acceleration: np.ndarray = np.array([0, 0, 0])  # x y z
+
+        # align_to = rs.stream.color
+        # self.aligned_d = rs.align(rs.stream.color)
+
         # Start streaming with requested config
         self.prof_d, self.prof_t = None, None
         try:
@@ -48,13 +55,9 @@ class RS_D_T(object):
         except Exception as e:
             raise ConnectionError(f"Error {e}. Pipeline Initialization Error")
  
-        self.running = True
         self.calibrated = False
-
-        camera_intr = self.prof_d.get_stream(rs.stream.color).as_video_stream_profile().get_intrinsics()
-        self.rgb_mtx = np.array([[camera_intr.fx, 0, camera_intr.ppx], [0, camera_intr.fy, camera_intr.ppy], [0, 0, 1]])
-        self.rgb_dist = np.array(camera_intr.coeffs)
-
+        # setup all the color/depth frame intrinsics (distortion coefficients + camera matrix)
+        self.set_intrinsics()       
         # detection related params
         self.aruco_dict = aruco.Dictionary_get(CAM_CONFIG['aruco_dict'])
         self.parameters = aruco.DetectorParameters_create()
@@ -64,6 +67,11 @@ class RS_D_T(object):
         self.detect_mode = CAM_CONFIG['detect_mode']
         self.calibrate_thres = CAM_CONFIG['calibrate_threshold']
 
+        """
+        t2d: transformation matrix from t-camera coordinate to d-camera coordinate
+        d2m: transformation matrix from d-camera coordinate to marker coordinate
+        t2m: transformation matrix from t-camera coordinate to marker coordinate
+        """
         self.t2d, self.d2m, self.t2m = None, None, None
 
         self.logger.info("Camera Initiated")
@@ -136,10 +144,25 @@ class RS_D_T(object):
                     print("calibration success: matrices loaded")
 
 
+    def set_intrinsics(self):
+        rgb_intr = self.prof_d.get_stream(rs.stream.color).as_video_stream_profile().get_intrinsics()
+        self.rgb_mtx = np.array([[rgb_intr.fx, 0, rgb_intr.ppx], 
+                                 [0, rgb_intr.fy, rgb_intr.ppy], 
+                                 [0, 0, 1]])
+        self.rgb_dist = np.array(rgb_intr.coeffs)
+
+        depth_intr = self.prof_d.get_stream(rs.stream.depth).as_video_stream_profile().get_intrinsics()
+        self.depth_mtx = np.array([[depth_intr.fx, 0, depth_intr.ppx], 
+                                 [0, depth_intr.fy, depth_intr.ppy], 
+                                 [0, 0, 1]])
+        self.depth_dist = np.array(depth_intr.coeffs)
+
     def get_intrinsics(self):
         return {
-            'mtx': self.rgb_mtx,
-            'dist': self.rgb_dist
+            'rgb_mtx': self.rgb_mtx,
+            'rgb_dist': self.rgb_dist,
+            'depth_mtx': self.depth_mtx,
+            'depth_dist': self.depth_dist
         }
 
     def stop(self):
@@ -164,40 +187,57 @@ class RS_D_T(object):
     def stop_detect(self):
         self.detect_mode = False
 
+    def poll(self):
+        try:
+            frame_d = self.pipe_d.wait_for_frames()
+            color_frame = frame_d.get_color_frame()
+            depth_frame = frame_d.get_depth_frame()
+
+            color_img = self.color_frame_data(color_frame)
+            depth_img = self.depth_frame_data(depth_frame)
+
+            location, t_rotation = self.poll_global_loc(color_img)
+
+            return {
+                'color_img': color_img,
+                'depth_img': depth_img,
+                'global_loc': location,
+                't_rotation': t_rotation
+            }
+
+        except Exception as e:
+            logging.error(e)
+            return np.nan
+
+
     """
     returns the [x, y, z] global coordiante of the vehicle (camera) in the map
     default format is a 3x1 np array, return np.nan when the pipeline errors
     """
-    def poll(self):
+    def poll_global_loc(self, color_img):
         if not self.calibrated:
             self.logger.error("Camera not calibrated yet")
             return np.nan
 
         try:
-            frame_d = self.pipe_d.wait_for_frames()
             frame_t = self.pipe_t.wait_for_frames()
-
             pose_frame = frame_t.get_pose_frame()
-            color_frame = frame_d.get_color_frame()
 
-            img = self.color_frame_data(color_frame)
             t_tvec, t_rvec = self.pose_frame_data(pose_frame)
 
             self.location = (self.t2m @ t_tvec)[:3]
 
             if self.show_gui:
                 if self.detect_mode:
-                    c2m, tvec, _ = self.get_trans_mat(img)
+                    c2m, tvec, _ = self.get_trans_mat(color_img)
                     if tvec is not None:
                         rounded = np.round((c2m @ [0,0,0,1])[:3], decimals=3)
-                        cv2.putText(img, str(rounded), (0, 64), self.font, 1, (255,255,0), 2, self.line_type)  
+                        cv2.putText(color_img, str(rounded), (0, 64), self.font, 1, (255,255,0), 2, self.line_type)  
                 
                 rounded = np.round(self.location, decimals=3)
-                cv2.putText(img, str(rounded), (0, 40), self.font, 1, (0,255,255), 2, self.line_type)
+                cv2.putText(color_img, str(rounded), (0, 40), self.font, 1, (0,255,255), 2, self.line_type)
                 
-                # cv2.putText(img, str(t_tvec), (0, 40), self.font, 1, (0,255,255), 2, self.line_type)
-                # cv2.putText(img, str(self.rvec_to_rpy(t_rvec)), (0, 64), self.font, 1, (255,255,0), 2, self.line_type)
-                cv2.imshow("frame", img)
+                cv2.imshow("frame", color_img)
                 key = cv2.waitKey(100)
                 key_ord = key & 0xFF
                 if key_ord == ord('q') or key == 27:
@@ -206,11 +246,14 @@ class RS_D_T(object):
                 elif key_ord == ord('d'):
                     self.detect_mode = not self.detect_mode
 
-            return self.location
+            return self.location, t_rvec
 
         except Exception as e:
             logging.error(e)
             return np.nan
+    
+    def depth_frame_data(self, depth_frame):
+        return np.asanyarray(depth_frame.get_data())
 
     def color_frame_data(self, color_frame):
         return np.asanyarray(color_frame.get_data())
@@ -286,13 +329,12 @@ class RS_D_T(object):
 
 if __name__ == '__main__':
     camera = RS_D_T()
-    counter = 0
     camera.calibrate(show_img=True)
     while True:
-        loc = camera.poll()
-        if np.isnan(loc).all():
-            camera.stop()
-            break
-        if counter % 20 == 0:
-            print(loc)
+        camera.poll()
+        # if np.isnan(loc).all():
+        #     camera.stop()
+        #     break
+        # if counter % 20 == 0:
+        #     print(loc)
         counter += 1
