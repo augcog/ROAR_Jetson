@@ -97,12 +97,12 @@ class RS_D_T(object):
 
             # rpy[0] == roll, rpy[2] == yaw
             if show_img:
-                t_flag = max(abs(rpy[0]), abs(rpy[2])) > self.calibrate_thres
-                if t_flag:
-                    boo, bar = round(rpy[0], 3), round(rpy[2], 3)
-                    t_msg = "roll: {}, yall: {} | expected: both < 1".format(boo, bar)
-                else:
-                    t_msg = "calibration angles are correct"
+                # t_flag = max(abs(rpy[0]), abs(rpy[2])) > self.calibrate_thres
+                # if t_flag:
+                #     boo, bar = round(rpy[0], 3), round(rpy[2], 3)
+                #     t_msg = "roll: {}, yall: {} | expected: both < 1".format(boo, bar)
+                # else:
+                #     t_msg = "calibration angles are correct"
 
                 d2m, _, _ = self.get_trans_mat(img)
 
@@ -112,12 +112,12 @@ class RS_D_T(object):
                 else:
                     d_msg = "aruco marker detected"
 
-                cv2.putText(img, t_msg, (0, 40), self.font, 1, (0,255,255), 2, self.line_type)
+                # cv2.putText(img, t_msg, (0, 40), self.font, 1, (0,255,255), 2, self.line_type)
                 cv2.putText(img, d_msg, (0, 64), self.font, 1, (255,255,0), 2, self.line_type)
                 cv2.imshow("frame", img)
                 cv2.waitKey(100)
 
-                if not (t_flag or d_flag):
+                if not d_flag:
                     self.d2m = d2m
                     self.t2d = self.cam2cam(t_rvec, t_tvec)
                     self.t2m = self.d2m @ self.t2d 
