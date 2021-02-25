@@ -14,9 +14,9 @@ CAM_CONFIG = {
     "aruco_dict": aruco.DICT_5X5_250, # dictionary used in aruco
     "aruco_thres": 10, # aruco marker threshold, internal parameter
     "aruco_block_size": 0.1592, # length of aruco marker's side in meter
-    "use_default_cam2cam": True, # recommended true, no rotation is calculated
+    "use_default_cam2cam": False, # recommended true, no rotation is calculated
     "detect_mode": False, # useful only in show_gui mode where a aruco-marker detection reference is given
-    "calibrate_threshold": 3 # calibrate threshold in degree
+    "calibrate_threshold": 1 # calibrate threshold in degree
 }
 
 class RS_D_T(object):
@@ -112,12 +112,14 @@ class RS_D_T(object):
                 else:
                     d_msg = "aruco marker detected"
 
-                # cv2.putText(img, t_msg, (0, 40), self.font, 1, (0,255,255), 2, self.line_type)
+                cv2.putText(img, "press s to confirm", (0, 40), self.font, 1, (255,255,0), 2, self.line_type)
                 cv2.putText(img, d_msg, (0, 64), self.font, 1, (255,255,0), 2, self.line_type)
                 cv2.imshow("frame", img)
-                cv2.waitKey(100)
 
-                if not d_flag:
+                key = cv2.waitKey(100)
+                key_ord = key & 0xFF
+
+                if not d_flag and (key_ord == ord('s') or key == ord('S')):
                     self.d2m = d2m
                     self.t2d = self.cam2cam(t_rvec, t_tvec)
                     self.t2m = self.d2m @ self.t2d 
@@ -196,19 +198,46 @@ class RS_D_T(object):
             color_img = self.color_frame_data(color_frame)
             depth_img = self.depth_frame_data(depth_frame)
 
-            location, t_rotation = self.poll_global_loc(color_img)
+            location, t_rvec = self.poll_global_loc(color_img)
 
             return {
                 'color_img': color_img,
                 'depth_img': depth_img,
                 'global_loc': location,
-                't_rotation': t_rotation
+                't_rotation': t_rvec
             }
 
         except Exception as e:
             logging.error(e)
             return np.nan
 
+    def test_rotation(self, signal):
+        frame_t = self.pipe_t.wait_for_frames()
+        pose_frame = frame_t.get_pose_frame()
+
+        t, r = self.pose_frame_data(pose_frame)
+
+        if signal:
+            mat = np.zeros((3, 3))
+            mat[0,0] = 1 - 2 * r[1] ** 2 - 2 * r[2] ** 2
+            mat[0,1] = 2 * r[0] * r[1] - 2 * r[2] * r[3]
+            mat[0,2] = 2 * r[0] * r[2] + 2 * r[1] * r[3]
+            mat[1,0] = 2 * r[0] * r[1] + 2 * r[2] * r[3]
+            mat[1,1] = 1 - 2 * r[0] ** 2 - 2 * r[2] ** 2
+            mat[1,2] = 2 * r[1] * r[2] - 2 * r[0] * r[3]
+            mat[2,0] = 2 * r[0] * r[2] - 2 * r[1] * r[3]
+            mat[2,1] = 2 * r[2] * r[1] + 2 * r[0] * r[3]
+            mat[2,2] = 1 - 2 * r[0] ** 2 - 2 * r[1]
+
+            mat = np.linalg.inv(mat)
+            self.mat = mat
+
+            p = np.round(mat, 3)
+            print(p)
+        else:
+            print(self.mat @ t[:3])
+
+        print("***********************")
 
     """
     returns the [x, y, z] global coordiante of the vehicle (camera) in the map
@@ -307,11 +336,30 @@ class RS_D_T(object):
         if self.use_default_cam2cam:
             return base_c2c
         else:
-            trans_mat = np.zeros((4, 4))
-            trans_mat[:3,:3] = cv2.Rodrigues(t_rvec[:3])[0]
-            trans_mat[3,:] = t_tvec
-            trans_mat = np.linalg.inv(trans_mat)
-            return trans_mat @ base_c2c
+            trans_mat = self.rotation_adjust(t_rvec)
+            print(trans_mat)
+            return base_c2c @ trans_mat
+    
+    """
+    output a transformation matrix that goes from the pose dependent coordinate system assumed by 
+    ARUCO marker to the pose independent coordinate system (y pointing anti-gravity) that the 
+    tracking module uses
+    formula from https://dev.intelrealsense.com/docs/rs-trajectory
+    """
+    def rotation_adjust(self, r):
+        mat = np.identity(4)
+        mat[0,0] = 1 - 2 * r[1] ** 2 - 2 * r[2] ** 2
+        mat[0,1] = 2 * r[0] * r[1] - 2 * r[2] * r[3]
+        mat[0,2] = 2 * r[0] * r[2] + 2 * r[1] * r[3]
+        mat[1,0] = 2 * r[0] * r[1] + 2 * r[2] * r[3]
+        mat[1,1] = 1 - 2 * r[0] ** 2 - 2 * r[2] ** 2
+        mat[1,2] = 2 * r[1] * r[2] - 2 * r[0] * r[3]
+        mat[2,0] = 2 * r[0] * r[2] - 2 * r[1] * r[3]
+        mat[2,1] = 2 * r[2] * r[1] + 2 * r[0] * r[3]
+        mat[2,2] = 1 - 2 * r[0] ** 2 - 2 * r[1]
+
+        mat = np.linalg.inv(mat)
+        return mat
 
     def get_trans_mat(self, img):
         corners, ids, _ = aruco.detectMarkers(img, self.aruco_dict, parameters=self.parameters)
@@ -329,12 +377,14 @@ class RS_D_T(object):
 
 if __name__ == '__main__':
     camera = RS_D_T()
-    camera.calibrate(show_img=True)
-    while True:
-        camera.poll()
-        # if np.isnan(loc).all():
-        #     camera.stop()
-        #     break
-        # if counter % 20 == 0:
-        #     print(loc)
-        counter += 1
+    try:
+        camera.calibrate(show_img=True)
+        while True:
+            camera.poll()
+            # if np.isnan(loc).all():
+            #     camera.stop()
+            #     break
+            # if counter % 20 == 0:
+            #     print(loc)
+    finally:
+        camera.stop()
