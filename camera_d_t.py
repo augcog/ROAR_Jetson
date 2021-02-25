@@ -6,6 +6,8 @@ import math as m
 import numpy as np
 import sys
 import time
+from typing import Optional
+
 
 CAM_CONFIG = {
     "image_w": 848, # image width
@@ -19,9 +21,10 @@ CAM_CONFIG = {
     "calibrate_threshold": 1 # calibrate threshold in degree
 }
 
-class RS_D_T(object):
 
+class RS_D_T(object):
     def __init__(self, image_w=CAM_CONFIG["image_w"], image_h=CAM_CONFIG["image_h"], framerate=CAM_CONFIG["framerate"], show_gui=True) -> None:
+
         self.logger = logging.getLogger("Intel RealSense D435i")
         self.logger.debug("Initiating Intel Realsense")
 
@@ -44,20 +47,25 @@ class RS_D_T(object):
         self.velocity: np.ndarray = np.array([0, 0, 0])  # x y z
         self.acceleration: np.ndarray = np.array([0, 0, 0])  # x y z
 
+
         # align_to = rs.stream.color
         # self.aligned_d = rs.align(rs.stream.color)
 
+
         # Start streaming with requested config
         self.prof_d, self.prof_t = None, None
+        self.aligned_d = rs.align(rs.stream.color)
         try:
             self.prof_d = self.pipe_d.start(self.cfg_d)
             self.prof_t = self.pipe_t.start(self.cfg_t)
         except Exception as e:
             raise ConnectionError(f"Error {e}. Pipeline Initialization Error")
+
  
         self.calibrated = False
         # setup all the color/depth frame intrinsics (distortion coefficients + camera matrix)
         self.set_intrinsics()       
+
         # detection related params
         self.aruco_dict = aruco.Dictionary_get(CAM_CONFIG['aruco_dict'])
         self.parameters = aruco.DetectorParameters_create()
@@ -67,12 +75,14 @@ class RS_D_T(object):
         self.detect_mode = CAM_CONFIG['detect_mode']
         self.calibrate_thres = CAM_CONFIG['calibrate_threshold']
 
+
         """
         t2d: transformation matrix from t-camera coordinate to d-camera coordinate
         d2m: transformation matrix from d-camera coordinate to marker coordinate
         t2m: transformation matrix from t-camera coordinate to marker coordinate
         """
         self.t2d, self.d2m, self.t2m = None, None, None
+
 
         self.logger.info("Camera Initiated")
 
@@ -185,18 +195,21 @@ class RS_D_T(object):
 
     def start_detect(self):
         self.detect_mode = True
-    
+
     def stop_detect(self):
         self.detect_mode = False
 
     def poll(self):
         try:
+
             frame_d = self.pipe_d.wait_for_frames()
+
             color_frame = frame_d.get_color_frame()
             depth_frame = frame_d.get_depth_frame()
 
             color_img = self.color_frame_data(color_frame)
             depth_img = self.depth_frame_data(depth_frame)
+
 
             location, t_rvec = self.poll_global_loc(color_img)
 
@@ -252,14 +265,17 @@ class RS_D_T(object):
             frame_t = self.pipe_t.wait_for_frames()
             pose_frame = frame_t.get_pose_frame()
 
+
             t_tvec, t_rvec = self.pose_frame_data(pose_frame)
 
             self.location = (self.t2m @ t_tvec)[:3]
+
 
             if self.show_gui:
                 if self.detect_mode:
                     c2m, tvec, _ = self.get_trans_mat(color_img)
                     if tvec is not None:
+
                         rounded = np.round((c2m @ [0,0,0,1])[:3], decimals=3)
                         cv2.putText(color_img, str(rounded), (0, 64), self.font, 1, (255,255,0), 2, self.line_type)  
                 
@@ -267,6 +283,7 @@ class RS_D_T(object):
                 cv2.putText(color_img, str(rounded), (0, 40), self.font, 1, (0,255,255), 2, self.line_type)
                 
                 cv2.imshow("frame", color_img)
+
                 key = cv2.waitKey(100)
                 key_ord = key & 0xFF
                 if key_ord == ord('q') or key == 27:
@@ -305,12 +322,20 @@ class RS_D_T(object):
         yaw   =  m.atan2(2.0 * (w*z + x*y), w*w + x*x - y*y - z*z) * 180.0 / m.pi
         return np.array([roll, pitch, yaw])
 
+    def run_threaded(self):
+        while True:
+            try:
+                self.poll()
+            except Exception as e:
+                self.logger.error(e)
+
     """
     This is a transformation from the d-camera's coord system to the marker's (world) system
     rvec and tvec are derived from the black-box algorithm in cv2.aruco, they represent some 
     important quantities from marker to d-camera. Since we want to extract the reverse transformation,
     we invert the matrix at the end.
     """
+
     def cam2marker(self, rvec, tvec):
         rmat = cv2.Rodrigues(rvec)[0]
         trans_mat = np.identity(4)
@@ -327,6 +352,7 @@ class RS_D_T(object):
     2) there's still some minor translation between their coordinate systems, which will
     be implemented later :TODO @Star
     """
+
     def cam2cam(self, t_rvec, t_tvec):
         base_c2c = np.array([1,0,0,0,
                              0,-1,0,0,
@@ -367,6 +393,7 @@ class RS_D_T(object):
             rvec, tvec ,_ = aruco.estimatePoseSingleMarkers(corners, self.block_size, self.rgb_mtx, self.rgb_dist)
             d2m = self.cam2marker(rvec, tvec)
 
+
             if self.show_gui:
                 aruco.drawAxis(img, self.rgb_mtx, self.rgb_dist, rvec[0], tvec[0], 0.01)
                 aruco.drawDetectedMarkers(img, corners)
@@ -374,6 +401,7 @@ class RS_D_T(object):
             return d2m, tvec, rvec
         else:
             return None, None, None
+
 
 if __name__ == '__main__':
     camera = RS_D_T()
@@ -388,3 +416,4 @@ if __name__ == '__main__':
             #     print(loc)
     finally:
         camera.stop()
+

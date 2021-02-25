@@ -21,7 +21,7 @@ import serial
 import sys
 from pathlib import Path
 import cv2
-
+from ROAR_Jetson.camera_d_t import RS_D_T as D435AndT265
 
 class JetsonRunner:
     """
@@ -43,6 +43,7 @@ class JetsonRunner:
         self.controller = JetsonKeyboardControl()
         self.rs_d435i: Optional[RS_D435i] = None
         self.t265: Optional[RS_T265] = None
+        self.d435_and_t265: Optional[D435AndT265] = None
         self.vive_tracker: Optional[ViveTrackerClient] = None
 
         if jetson_config.initiate_pygame:
@@ -91,12 +92,20 @@ class JetsonRunner:
         """
         if self.jetson_config.use_arduino:
             self._setup_arduino()
-        if self.jetson_config.use_d435i:
-            self._setup_d435i()
-        if self.jetson_config.use_t265:
-            self._setup_t265()
+
+        if self.jetson_config.use_t265 and self.jetson_config.use_t265:
+            self._setup_d435i_and_t265()
+        else:
+            if self.jetson_config.use_d435i:
+                self._setup_d435i()
+            if self.jetson_config.use_t265:
+                self._setup_t265()
         if self.jetson_config.use_vive_tracker:
             self._setup_vive_tracker()
+
+    def _setup_d435i_and_t265(self):
+        self.d435_and_t265 = D435AndT265()
+        self.jetson_vehicle.add(self.d435_and_t265, threaded=True)
 
     def _setup_t265(self):
         try:
@@ -192,23 +201,44 @@ class JetsonRunner:
         Returns:
             SensorsData and Vehicle state.
         """
-        sensors_data: SensorsData = self.jetson_bridge.convert_sensor_data_from_source_to_agent(
-            source={
-                "front_rgb": self.jetson_vehicle.front_rgb_img,
-                "rear_rgb": None,
-                "front_depth": self.jetson_vehicle.front_depth_img,
-                "imu": None,
-                "t265_tracking": self.t265,
-                "vive_tracking": self.vive_tracker.latest_tracker_message
-                if self.vive_tracker is not None and self.vive_tracker.latest_tracker_message is not None else None
-            }
-        )
-        if sensors_data.vive_tracker_data is not None:
-            self.jetson_vehicle.location = sensors_data.vive_tracker_data.location.to_array()
-            self.jetson_vehicle.rotation = sensors_data.vive_tracker_data.rotation.to_array()
-            self.jetson_vehicle.velocity = sensors_data.vive_tracker_data.velocity.to_array()
-        new_vehicle = self.jetson_bridge.convert_vehicle_from_source_to_agent(self.jetson_vehicle)
-        return sensors_data, new_vehicle
+
+        if self.jetson_config.use_t265 and self.jetson_config.use_d435i:
+            sensors_data: SensorsData = self.jetson_bridge.convert_sensor_data_from_source_to_agent(
+                source={
+                    "front_rgb": self.d435_and_t265.color_frame,
+                    "rear_rgb": None,
+                    "front_depth": self.d435_and_t265.depth_frame,
+                    "imu": None,
+                    "t265_tracking": self.d435_and_t265,
+                    "vive_tracking": self.vive_tracker.latest_tracker_message
+                    if self.vive_tracker is not None and self.vive_tracker.latest_tracker_message is not None else None
+                }
+            )
+            if sensors_data.vive_tracker_data is not None:
+                self.jetson_vehicle.location = sensors_data.vive_tracker_data.location.to_array()
+                self.jetson_vehicle.rotation = sensors_data.vive_tracker_data.rotation.to_array()
+                self.jetson_vehicle.velocity = sensors_data.vive_tracker_data.velocity.to_array()
+            new_vehicle = self.jetson_bridge.convert_vehicle_from_source_to_agent(self.jetson_vehicle)
+            return sensors_data, new_vehicle
+        else:
+            # old configuration
+            sensors_data: SensorsData = self.jetson_bridge.convert_sensor_data_from_source_to_agent(
+                source={
+                    "front_rgb": self.jetson_vehicle.front_rgb_img,
+                    "rear_rgb": None,
+                    "front_depth": self.jetson_vehicle.front_depth_img,
+                    "imu": None,
+                    "t265_tracking": self.t265,
+                    "vive_tracking": self.vive_tracker.latest_tracker_message
+                    if self.vive_tracker is not None and self.vive_tracker.latest_tracker_message is not None else None
+                }
+            )
+            if sensors_data.vive_tracker_data is not None:
+                self.jetson_vehicle.location = sensors_data.vive_tracker_data.location.to_array()
+                self.jetson_vehicle.rotation = sensors_data.vive_tracker_data.rotation.to_array()
+                self.jetson_vehicle.velocity = sensors_data.vive_tracker_data.velocity.to_array()
+            new_vehicle = self.jetson_bridge.convert_vehicle_from_source_to_agent(self.jetson_vehicle)
+            return sensors_data, new_vehicle
 
     def update_pygame(self, clock) -> Tuple[bool, VehicleControl]:
         """
