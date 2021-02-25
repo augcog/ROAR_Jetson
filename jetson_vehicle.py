@@ -15,7 +15,7 @@ from typing import Optional, List
 import numpy as np
 from ROAR_Jetson.arduino_receiver import ArduinoReceiver
 from ROAR_Jetson.vive.vive_tracker_client import ViveTrackerClient
-from ROAR_Jetson.camera_d_t import RS_D_T
+from ROAR_Jetson.camera_d_t import RealsenseD435iAndT265
 
 class Vehicle:
     """
@@ -154,7 +154,7 @@ class Vehicle:
                     p.run_threaded()
                 elif isinstance(p, ViveTrackerClient):
                     p.run_threaded()
-                elif isinstance(p, RS_D_T):
+                elif isinstance(p, RealsenseD435iAndT265):
                     p.run_threaded()
                 else:
                     self.logger.warning(f"Unknown part [{p}]")

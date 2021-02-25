@@ -21,7 +21,7 @@ import serial
 import sys
 from pathlib import Path
 import cv2
-from ROAR_Jetson.camera_d_t import RS_D_T as D435AndT265
+from ROAR_Jetson.camera_d_t import RealsenseD435iAndT265 as D435AndT265
 
 class JetsonRunner:
     """

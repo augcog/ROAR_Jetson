@@ -6,24 +6,24 @@ import math as m
 import numpy as np
 import sys
 import time
-from typing import Optional
-
+from typing import Optional, Tuple, List
 
 CAM_CONFIG = {
-    "image_w": 848, # image width
-    "image_h": 480, # image height
-    "framerate": 30, # frame rate 
-    "aruco_dict": aruco.DICT_5X5_250, # dictionary used in aruco
-    "aruco_thres": 10, # aruco marker threshold, internal parameter
-    "aruco_block_size": 0.1592, # length of aruco marker's side in meter
-    "use_default_cam2cam": False, # recommended true, no rotation is calculated
-    "detect_mode": False, # useful only in show_gui mode where a aruco-marker detection reference is given
-    "calibrate_threshold": 1 # calibrate threshold in degree
+    "image_w": 848,  # image width
+    "image_h": 480,  # image height
+    "framerate": 30,  # frame rate
+    "aruco_dict": aruco.DICT_5X5_250,  # dictionary used in aruco
+    "aruco_thres": 10,  # aruco marker threshold, internal parameter
+    "aruco_block_size": 0.1592,  # length of aruco marker's side in meter
+    "use_default_cam2cam": False,  # recommended true, no rotation is calculated
+    "detect_mode": False,  # useful only in show_gui mode where a aruco-marker detection reference is given
+    "calibrate_threshold": 1  # calibrate threshold in degree
 }
 
 
-class RS_D_T(object):
-    def __init__(self, image_w=CAM_CONFIG["image_w"], image_h=CAM_CONFIG["image_h"], framerate=CAM_CONFIG["framerate"], show_gui=True) -> None:
+class RealsenseD435iAndT265(object):
+    def __init__(self, image_w=CAM_CONFIG["image_w"], image_h=CAM_CONFIG["image_h"], framerate=CAM_CONFIG["framerate"],
+                 show_gui=True) -> None:
 
         self.logger = logging.getLogger("Intel RealSense D435i")
         self.logger.debug("Initiating Intel Realsense")
@@ -35,7 +35,9 @@ class RS_D_T(object):
         self.pipe_d = rs.pipeline()
         self.cfg_d = rs.config()
         self.cfg_d.enable_stream(rs.stream.color, image_w, image_h, rs.format.bgr8, framerate)  # color camera
-        self.cfg_d.enable_stream(rs.stream.depth, image_w, image_h, rs.format.z16, framerate) # depth camera
+        self.cfg_d.enable_stream(rs.stream.depth, image_w, image_h, rs.format.z16, framerate)  # depth camera
+        align_to = rs.stream.color
+        self.align = rs.align(align_to)
 
         # init for the t camera
         self.pipe_t = rs.pipeline()
@@ -46,11 +48,15 @@ class RS_D_T(object):
         self.rotation: np.ndarray = np.array([0, 0, 0])  # pitch yaw roll
         self.velocity: np.ndarray = np.array([0, 0, 0])  # x y z
         self.acceleration: np.ndarray = np.array([0, 0, 0])  # x y z
-
+        self.depth_camera_intrinsics: Optional[np.ndarray] = None
+        self.rgb_camera_intrinsics: Optional[np.ndarray] = None
+        self.depth_camera_distortion_coefficients: Optional[np.ndarray] = None
+        self.rgb_camera_distortion_coefficients: Optional[np.ndarray] = None
+        self.color_image: Optional[np.ndarray] = None
+        self.depth_image: Optional[np.ndarray] = None
 
         # align_to = rs.stream.color
         # self.aligned_d = rs.align(rs.stream.color)
-
 
         # Start streaming with requested config
         self.prof_d, self.prof_t = None, None
@@ -61,10 +67,9 @@ class RS_D_T(object):
         except Exception as e:
             raise ConnectionError(f"Error {e}. Pipeline Initialization Error")
 
- 
         self.calibrated = False
         # setup all the color/depth frame intrinsics (distortion coefficients + camera matrix)
-        self.set_intrinsics()       
+        self.set_intrinsics()
 
         # detection related params
         self.aruco_dict = aruco.Dictionary_get(CAM_CONFIG['aruco_dict'])
@@ -75,7 +80,6 @@ class RS_D_T(object):
         self.detect_mode = CAM_CONFIG['detect_mode']
         self.calibrate_thres = CAM_CONFIG['calibrate_threshold']
 
-
         """
         t2d: transformation matrix from t-camera coordinate to d-camera coordinate
         d2m: transformation matrix from d-camera coordinate to marker coordinate
@@ -83,6 +87,9 @@ class RS_D_T(object):
         """
         self.t2d, self.d2m, self.t2m = None, None, None
 
+        self.global_to_roar_reflection_matrix = np.array([[-1, 0, 0],
+                                                          [0, 1, 0],
+                                                          [0, 0, -1]]).astype(np.float)
 
         self.logger.info("Camera Initiated")
 
@@ -90,6 +97,7 @@ class RS_D_T(object):
     Important function that perform calibration check before start detecting ARUCO marker and getting
     transformation matrix
     """
+
     def calibrate(self, show_img=False):
         self.logger.debug("Calibration process starts")
 
@@ -101,7 +109,7 @@ class RS_D_T(object):
             color_frame = frame_d.get_color_frame()
 
             img = self.color_frame_data(color_frame)
-            t_tvec, t_rvec = self.pose_frame_data(pose_frame)
+            t_tvec, t_rvec, t_vvec = self.pose_frame_data(pose_frame)
 
             rpy = self.rvec_to_rpy(t_rvec)
 
@@ -122,17 +130,16 @@ class RS_D_T(object):
                 else:
                     d_msg = "aruco marker detected"
 
-                cv2.putText(img, "press s to confirm", (0, 40), self.font, 1, (255,255,0), 2, self.line_type)
-                cv2.putText(img, d_msg, (0, 64), self.font, 1, (255,255,0), 2, self.line_type)
+                cv2.putText(img, d_msg, (0, 64), self.font, 1, (255, 255, 0), 2, self.line_type)
                 cv2.imshow("frame", img)
 
                 key = cv2.waitKey(100)
                 key_ord = key & 0xFF
 
-                if not d_flag and (key_ord == ord('s') or key == ord('S')):
+                if not d_flag:  # and (key_ord == ord('s') or key == ord('S')):
                     self.d2m = d2m
                     self.t2d = self.cam2cam(t_rvec, t_tvec)
-                    self.t2m = self.d2m @ self.t2d 
+                    self.t2m = self.d2m @ self.t2d
                     self.calibrated = True
                     self.restart(t_cam=True)
                     print("calibration success: matrices loaded")
@@ -150,31 +157,30 @@ class RS_D_T(object):
                 else:
                     self.d2m = d2m
                     self.t2d = self.cam2cam(t_rvec, t_tvec)
-                    self.t2m = self.d2m @ self.t2d 
+                    self.t2m = self.d2m @ self.t2d
                     self.calibrated = True
                     self.restart(t_cam=True)
                     print("calibration success: matrices loaded")
 
-
     def set_intrinsics(self):
         rgb_intr = self.prof_d.get_stream(rs.stream.color).as_video_stream_profile().get_intrinsics()
-        self.rgb_mtx = np.array([[rgb_intr.fx, 0, rgb_intr.ppx], 
-                                 [0, rgb_intr.fy, rgb_intr.ppy], 
-                                 [0, 0, 1]])
-        self.rgb_dist = np.array(rgb_intr.coeffs)
+        self.rgb_camera_intrinsics = np.array([[rgb_intr.fx, 0, rgb_intr.ppx],
+                                               [0, rgb_intr.fy, rgb_intr.ppy],
+                                               [0, 0, 1]])
+        self.rgb_camera_distortion_coefficients = np.array(rgb_intr.coeffs)
 
         depth_intr = self.prof_d.get_stream(rs.stream.depth).as_video_stream_profile().get_intrinsics()
-        self.depth_mtx = np.array([[depth_intr.fx, 0, depth_intr.ppx], 
-                                 [0, depth_intr.fy, depth_intr.ppy], 
-                                 [0, 0, 1]])
-        self.depth_dist = np.array(depth_intr.coeffs)
+        self.depth_camera_intrinsics = np.array([[depth_intr.fx, 0, depth_intr.ppx],
+                                                 [0, depth_intr.fy, depth_intr.ppy],
+                                                 [0, 0, 1]])
+        self.depth_camera_distortion_coefficients = np.array(depth_intr.coeffs)
 
     def get_intrinsics(self):
         return {
-            'rgb_mtx': self.rgb_mtx,
-            'rgb_dist': self.rgb_dist,
-            'depth_mtx': self.depth_mtx,
-            'depth_dist': self.depth_dist
+            'rgb_camera_intrinsics': self.rgb_camera_intrinsics,
+            'rgb_camera_distortion_coefficients': self.rgb_camera_distortion_coefficients,
+            'depth_camera_intrinsics': self.depth_camera_intrinsics,
+            'depth_camera_distortion_coefficients': self.depth_camera_distortion_coefficients
         }
 
     def stop(self):
@@ -199,127 +205,145 @@ class RS_D_T(object):
     def stop_detect(self):
         self.detect_mode = False
 
+    def recaliberate(self,
+                     uncaliberated_tvec: np.ndarray,
+                     uncaliberated_rvec: np.ndarray):
+        d2m, _, _ = self.get_trans_mat(self.color_image)
+        is_aruco_marker_detected = d2m is not None  # true if aruco marker detected, false otherwise
+        if is_aruco_marker_detected:
+            self.d2m = d2m
+            self.t2d = self.cam2cam(uncaliberated_tvec, uncaliberated_rvec)
+            self.t2m = self.d2m @ self.t2d
+            self.calibrated = True
+        else:
+            self.calibrated = False
+            self.d2m, self.t2d, self.t2m = None, None, None
+
     def poll(self):
+        """
+        Attempt to poll from T265 and D435i Camera.
+        Update data & return True if operation is a success, false otherwise
+
+        Data includes
+        color_image, depth_image, location, rotation, velocity
+
+        Returns:
+            True if operation is success, false otherwise
+        """
         try:
-
             frame_d = self.pipe_d.wait_for_frames()
+            aligned_frames = self.align.process(frame_d)
+            depth_frame = aligned_frames.get_depth_frame()
+            color_frame = aligned_frames.get_color_frame()
 
-            color_frame = frame_d.get_color_frame()
-            depth_frame = frame_d.get_depth_frame()
+            self.color_image: np.ndarray = np.asanyarray(color_frame.get_data())
+            self.depth_image: np.ndarray = np.asanyarray(depth_frame.get_data())
 
-            color_img = self.color_frame_data(color_frame)
-            depth_img = self.depth_frame_data(depth_frame)
+            frame_t = self.pipe_t.wait_for_frames()
+            pose_frame = frame_t.get_pose_frame()
+            t_tvec, t_rvec, t_vvec = self.pose_frame_data(pose_frame)
+            if self.calibrated is False:
+                self.logger.info("Warning: System is not caliberated")
 
+                self.recaliberate(uncaliberated_tvec=t_tvec,
+                                  uncaliberated_rvec=t_rvec)
+                self.location = t_tvec[:3]
+                self.rotation = self.rvec_to_rpy(rvec=t_rvec)
+                self.velocity = t_vvec[:3]
+            else:
+                location, rotation, velocity = self.to_global_coord(t_tvec, t_rvec, t_vvec)
+                self.location, self.rotation, self.velocity = self.to_roar_coord(location, rotation, velocity)
 
-            location, t_rvec = self.poll_global_loc(color_img)
-
-            return {
-                'color_img': color_img,
-                'depth_img': depth_img,
-                'global_loc': location,
-                't_rotation': t_rvec
-            }
+            return True
 
         except Exception as e:
             logging.error(e)
-            return np.nan
+            return False
 
-    def test_rotation(self, signal):
-        frame_t = self.pipe_t.wait_for_frames()
-        pose_frame = frame_t.get_pose_frame()
+    def to_roar_coord(self, location, rotation, velocity) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        # print(self.global_to_roar_reflection_matrix, location)
+        new_location = self.global_to_roar_reflection_matrix @ location
+        new_rotation = self.rotation_matrix_to_euler(self.global_to_roar_reflection_matrix @ \
+                       self.euler_to_rotation_matrix(roll=rotation[0], pitch=rotation[1], yaw=rotation[2]) @ \
+                       self.global_to_roar_reflection_matrix)
+        new_velocity = self.global_to_roar_reflection_matrix @ velocity
+        return new_location, new_rotation, new_velocity
 
-        t, r = self.pose_frame_data(pose_frame)
+    def to_global_coord(self,
+                        t_tvec: np.ndarray,
+                        t_rvec: np.ndarray,
+                        t_vvec: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Transform coordiante from local to world coordinate frame
+        Args:
+            t_tvec: 4x1 array of [x,y,z,1] in local coordinate frame
+            t_rvec: 4x1 array of [rx,ry,rz,w] in local coordinate frame
+            t_vvec: 4x1 array of [vx,vy,vz,1] in local coordinate frame
 
-        if signal:
-            mat = np.zeros((3, 3))
-            mat[0,0] = 1 - 2 * r[1] ** 2 - 2 * r[2] ** 2
-            mat[0,1] = 2 * r[0] * r[1] - 2 * r[2] * r[3]
-            mat[0,2] = 2 * r[0] * r[2] + 2 * r[1] * r[3]
-            mat[1,0] = 2 * r[0] * r[1] + 2 * r[2] * r[3]
-            mat[1,1] = 1 - 2 * r[0] ** 2 - 2 * r[2] ** 2
-            mat[1,2] = 2 * r[1] * r[2] - 2 * r[0] * r[3]
-            mat[2,0] = 2 * r[0] * r[2] - 2 * r[1] * r[3]
-            mat[2,1] = 2 * r[2] * r[1] + 2 * r[0] * r[3]
-            mat[2,2] = 1 - 2 * r[0] ** 2 - 2 * r[1]
-
-            mat = np.linalg.inv(mat)
-            self.mat = mat
-
-            p = np.round(mat, 3)
-            print(p)
+        Returns:
+            location: 3x1 array of [x,y,z] in global coordinate frame
+            rotation: 3x1 array of [roll, pitch, yaw] in global coordinate frame
+            velocity: 3x1 array of [vx, vy, vz] in global coordinate frame
+        """
+        if not self.calibrated:
+            self.logger.error("Cannot convert to global coord because system is registered as uncaliberated")
+            raise Exception("Uncaliberated Error")
         else:
-            print(self.mat @ t[:3])
-
-        print("***********************")
+            location = (self.t2m @ t_tvec)[:3]
+            rotation = self.rvec_to_rpy(rvec=t_rvec)  # TODO: figure out how to do this rotation transformation
+            velocity = np.array([-t_vvec[0], -t_vvec[1], t_vvec[2]])
+            return location, rotation, velocity
 
     """
     returns the [x, y, z] global coordiante of the vehicle (camera) in the map
     default format is a 3x1 np array, return np.nan when the pipeline errors
     """
-    def poll_global_loc(self, color_img):
+
+    def poll_global_loc(self, t_tvec, t_rvec):
         if not self.calibrated:
             self.logger.error("Camera not calibrated yet")
             return np.nan
 
         try:
-            frame_t = self.pipe_t.wait_for_frames()
-            pose_frame = frame_t.get_pose_frame()
-
-
-            t_tvec, t_rvec = self.pose_frame_data(pose_frame)
-
             self.location = (self.t2m @ t_tvec)[:3]
-
-
-            if self.show_gui:
-                if self.detect_mode:
-                    c2m, tvec, _ = self.get_trans_mat(color_img)
-                    if tvec is not None:
-
-                        rounded = np.round((c2m @ [0,0,0,1])[:3], decimals=3)
-                        cv2.putText(color_img, str(rounded), (0, 64), self.font, 1, (255,255,0), 2, self.line_type)  
-                
-                rounded = np.round(self.location, decimals=3)
-                cv2.putText(color_img, str(rounded), (0, 40), self.font, 1, (0,255,255), 2, self.line_type)
-                
-                cv2.imshow("frame", color_img)
-
-                key = cv2.waitKey(100)
-                key_ord = key & 0xFF
-                if key_ord == ord('q') or key == 27:
-                    cv2.destroyAllWindows()
-                    sys.exit(0)
-                elif key_ord == ord('d'):
-                    self.detect_mode = not self.detect_mode
-
             return self.location, t_rvec
 
         except Exception as e:
             logging.error(e)
             return np.nan
-    
-    def depth_frame_data(self, depth_frame):
+
+    @staticmethod
+    def depth_frame_data(depth_frame):
         return np.asanyarray(depth_frame.get_data())
 
-    def color_frame_data(self, color_frame):
+    @staticmethod
+    def color_frame_data(color_frame):
         return np.asanyarray(color_frame.get_data())
-    
-    def pose_frame_data(self, pose_frame):
+
+    @staticmethod
+    def pose_frame_data(pose_frame):
         data = pose_frame.get_pose_data()
         t = data.translation
         t_tvec = np.array([t.x, t.y, t.z, 1])
         r = data.rotation
         t_rvec = np.array([r.x, r.y, r.z, r.w])
-        return t_tvec, t_rvec
+        v = data.velocity
+        t_vvec = np.array([v.x, v.y, v.z, 1])
+        return t_tvec, t_rvec, t_vvec
 
     """
-    Helper function that turns a rotation vector into roll, pitch, and yaw angles
+    Helper function that turns a rotation vector into roll, pitch, and yaw euler angles
     """
-    def rvec_to_rpy(self, rvec):
+
+    @staticmethod
+    def rvec_to_rpy(rvec) -> np.ndarray:
         x, y, z, w = tuple(rvec)
-        pitch =  -m.asin(2.0 * (x*z - w*y)) * 180.0 / m.pi
-        roll  =  m.atan2(2.0 * (w*x + y*z), w*w - x*x - y*y + z*z) * 180.0 / m.pi
-        yaw   =  m.atan2(2.0 * (w*z + x*y), w*w + x*x - y*y - z*z) * 180.0 / m.pi
+        w = w
+        x, y, z = z, x, y
+
+        pitch = -m.asin(2.0 * (x * z - w * y)) * 180.0 / m.pi
+        roll = m.atan2(2.0 * (w * x + y * z), w * w - x * x - y * y + z * z) * 180.0 / m.pi
+        yaw = m.atan2(2.0 * (w * z + x * y), w * w + x * x - y * y - z * z) * 180.0 / m.pi
         return np.array([roll, pitch, yaw])
 
     def run_threaded(self):
@@ -336,7 +360,8 @@ class RS_D_T(object):
     we invert the matrix at the end.
     """
 
-    def cam2marker(self, rvec, tvec):
+    @staticmethod
+    def cam2marker(rvec, tvec):
         rmat = cv2.Rodrigues(rvec)[0]
         trans_mat = np.identity(4)
         trans_mat[:3, :3] = rmat
@@ -354,66 +379,131 @@ class RS_D_T(object):
     """
 
     def cam2cam(self, t_rvec, t_tvec):
-        base_c2c = np.array([1,0,0,0,
-                             0,-1,0,0,
-                             0,0,-1,0,
-                             0,0,0,1]).reshape((4, 4))
+        base_c2c = np.array([1, 0, 0, 0,
+                             0, -1, 0, 0,
+                             0, 0, -1, 0,
+                             0, 0, 0, 1]).reshape((4, 4))
         # no tuning of the t camera rotation
         if self.use_default_cam2cam:
             return base_c2c
         else:
             trans_mat = self.rotation_adjust(t_rvec)
-            print(trans_mat)
             return base_c2c @ trans_mat
-    
+
     """
     output a transformation matrix that goes from the pose dependent coordinate system assumed by 
     ARUCO marker to the pose independent coordinate system (y pointing anti-gravity) that the 
     tracking module uses
     formula from https://dev.intelrealsense.com/docs/rs-trajectory
     """
-    def rotation_adjust(self, r):
+
+    @staticmethod
+    def rotation_adjust(r):
         mat = np.identity(4)
-        mat[0,0] = 1 - 2 * r[1] ** 2 - 2 * r[2] ** 2
-        mat[0,1] = 2 * r[0] * r[1] - 2 * r[2] * r[3]
-        mat[0,2] = 2 * r[0] * r[2] + 2 * r[1] * r[3]
-        mat[1,0] = 2 * r[0] * r[1] + 2 * r[2] * r[3]
-        mat[1,1] = 1 - 2 * r[0] ** 2 - 2 * r[2] ** 2
-        mat[1,2] = 2 * r[1] * r[2] - 2 * r[0] * r[3]
-        mat[2,0] = 2 * r[0] * r[2] - 2 * r[1] * r[3]
-        mat[2,1] = 2 * r[2] * r[1] + 2 * r[0] * r[3]
-        mat[2,2] = 1 - 2 * r[0] ** 2 - 2 * r[1]
+        mat[0, 0] = 1 - 2 * r[1] ** 2 - 2 * r[2] ** 2
+        mat[0, 1] = 2 * r[0] * r[1] - 2 * r[2] * r[3]
+        mat[0, 2] = 2 * r[0] * r[2] + 2 * r[1] * r[3]
+        mat[1, 0] = 2 * r[0] * r[1] + 2 * r[2] * r[3]
+        mat[1, 1] = 1 - 2 * r[0] ** 2 - 2 * r[2] ** 2
+        mat[1, 2] = 2 * r[1] * r[2] - 2 * r[0] * r[3]
+        mat[2, 0] = 2 * r[0] * r[2] - 2 * r[1] * r[3]
+        mat[2, 1] = 2 * r[2] * r[1] + 2 * r[0] * r[3]
+        mat[2, 2] = 1 - 2 * r[0] ** 2 - 2 * r[1]
 
         mat = np.linalg.inv(mat)
         return mat
 
     def get_trans_mat(self, img):
         corners, ids, _ = aruco.detectMarkers(img, self.aruco_dict, parameters=self.parameters)
-        if ids: # there's at least one aruco marker in sight
-            rvec, tvec ,_ = aruco.estimatePoseSingleMarkers(corners, self.block_size, self.rgb_mtx, self.rgb_dist)
+        if ids:  # there's at least one aruco marker in sight
+            rvec, tvec, _ = aruco.estimatePoseSingleMarkers(corners, self.block_size,
+                                                            self.rgb_camera_intrinsics,
+                                                            self.rgb_camera_distortion_coefficients)
             d2m = self.cam2marker(rvec, tvec)
 
-
             if self.show_gui:
-                aruco.drawAxis(img, self.rgb_mtx, self.rgb_dist, rvec[0], tvec[0], 0.01)
+                aruco.drawAxis(img, self.rgb_camera_intrinsics, self.rgb_camera_distortion_coefficients, rvec[0],
+                               tvec[0], 0.01)
                 aruco.drawDetectedMarkers(img, corners)
 
             return d2m, tvec, rvec
         else:
             return None, None, None
+    @staticmethod
+    def euler_to_rotation_matrix(roll: float, pitch: float, yaw: float) -> np.ndarray:
+        """
+        Takes in roll pitch yaw and compute rotation matrix using the order of
 
+        R = R_yaw @ R_pitch @ R_roll
 
+        http://planning.cs.uiuc.edu/node104.html
+
+        Args:
+            roll: float of roll in degree
+            pitch: float of pitch in degree
+            yaw: float of yaw in degree
+
+        Returns:
+            3 x 3 array rotation matrix
+        """
+        c_y = np.cos(np.radians(yaw))
+        s_y = np.sin(np.radians(yaw))
+        c_r = np.cos(np.radians(roll))
+        s_r = np.sin(np.radians(roll))
+        c_p = np.cos(np.radians(pitch))
+        s_p = np.sin(np.radians(pitch))
+
+        R_roll = np.array([
+            [1, 0, 0],
+            [0, c_r, -s_r],
+            [0, s_r, c_r]
+        ])
+        R_pitch = np.array([
+            [c_p, 0, s_p],
+            [0, 1, 0],
+            [-s_p, 0, c_p]
+        ])
+        R_yaw = np.array([
+            [c_y, -s_y, 0],
+            [s_y, c_y, 0],
+            [0, 0, 1]
+        ])
+        return R_yaw @ R_pitch @ R_roll
+
+    @staticmethod
+    def rotation_matrix_to_euler(matrix:np.ndarray):
+        r11, r21, r31, r32, r33 = matrix[0][0], matrix[1][0], matrix[2][0], matrix[2][1], matrix[2][2]
+        yaw = alpha = np.degrees(np.arctan2(r21, r11))
+        pitch = beta = np.degrees(np.arctan2(-r31, np.sqrt(r32 ** 2 + r33 ** 2)))
+        roll = gamma = np.degrees(np.arctan2(r32, r33))
+        return np.array([roll, pitch, yaw])
 if __name__ == '__main__':
-    camera = RS_D_T()
-    try:
-        camera.calibrate(show_img=True)
-        while True:
-            camera.poll()
-            # if np.isnan(loc).all():
-            #     camera.stop()
-            #     break
-            # if counter % 20 == 0:
-            #     print(loc)
-    finally:
-        camera.stop()
+    logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                        datefmt="%H:%M:%S", level=logging.DEBUG)
+    camera = RealsenseD435iAndT265()
+    # camera.calibrate(show_img=True)
+    while True:
+        camera.poll()
+        img = camera.color_image.copy()
+        cv2.putText(img=img, text=f"System is {'caliberated' if camera.calibrated else 'not caliberated'}",
+                    org=(10, 25), fontFace=camera.font, fontScale=0.5,
+                    color=(255, 255, 0), thickness=1, lineType=camera.line_type)
+        cv2.putText(img=img, text=f"{camera.location}",
+                    org=(10, 50), fontFace=camera.font, fontScale=0.5,
+                    color=(255, 255, 0), thickness=1, lineType=camera.line_type)
+        cv2.putText(img=img, text=f"{camera.rotation}",
+                    org=(10, 75), fontFace=camera.font, fontScale=0.5,
+                    color=(255, 255, 0), thickness=1, lineType=camera.line_type)
+        cv2.putText(img=img, text=f"{camera.velocity}",
+                    org=(10, 100), fontFace=camera.font, fontScale=0.5,
+                    color=(255, 255, 0), thickness=1, lineType=camera.line_type)
+
+        cv2.imshow("frame", img)
+        key = cv2.waitKey(100)
+        key_ord = key & 0xFF
+        if key_ord == ord('q'):
+            camera.stop()
+            exit(1)
+        elif key_ord == ord('r'):
+            camera.calibrated = False
 
