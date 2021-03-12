@@ -7,9 +7,12 @@ import numpy as np
 import sys
 import time
 from typing import Optional, Tuple, List
-
+try:
+    from ROAR_Jetson.part import Part
+except:
+    from part import Part
 CAM_CONFIG = {
-    "image_w": 848,  # image width
+    "image_w": 640,  # image width
     "image_h": 480,  # image height
     "framerate": 30,  # frame rate
     "aruco_dict": aruco.DICT_5X5_250,  # dictionary used in aruco
@@ -21,11 +24,11 @@ CAM_CONFIG = {
 }
 
 
-class RealsenseD435iAndT265(object):
+class RealsenseD435iAndT265(Part):
     def __init__(self, image_w=CAM_CONFIG["image_w"], image_h=CAM_CONFIG["image_h"], framerate=CAM_CONFIG["framerate"],
-                 show_gui=True) -> None:
-
-        self.logger = logging.getLogger("Intel RealSense D435i")
+                 show_gui=False) -> None:
+        name = "Realsense D435i and T265"
+        super().__init__(name=name)
         self.logger.debug("Initiating Intel Realsense")
 
         self.show_gui = show_gui
@@ -87,80 +90,26 @@ class RealsenseD435iAndT265(object):
         """
         self.t2d, self.d2m, self.t2m = None, None, None
 
-        self.global_to_roar_reflection_matrix = np.array([[-1, 0, 0],
-                                                          [0, 1, 0],
-                                                          [0, 0, -1]]).astype(np.float)
-
         self.logger.info("Camera Initiated")
 
-    """
-    Important function that perform calibration check before start detecting ARUCO marker and getting
-    transformation matrix
-    """
+    def run_step(self):
+        self.poll()
 
-    def calibrate(self, show_img=False):
-        self.logger.debug("Calibration process starts")
+    def shutdown(self):
 
-        while not self.calibrated:
-            frame_t = self.pipe_t.wait_for_frames()
-            frame_d = self.pipe_d.wait_for_frames()
+        try:
+            self.pipe_d.stop()
+            self.logger.debug("D435i shut down success")
+        except Exception as e:
+            self.logger.error(e)
+            raise ConnectionError(f"D435i unable to shutdown: {e}")
+        try:
+            self.pipe_t.stop()
+            self.logger.debug("T265 shutdown success")
+        except Exception as e:
+            self.logger.error(e)
+            raise ConnectionError(f"T265 unable to shutdown: {e}")
 
-            pose_frame = frame_t.get_pose_frame()
-            color_frame = frame_d.get_color_frame()
-
-            img = self.color_frame_data(color_frame)
-            t_tvec, t_rvec, t_vvec = self.pose_frame_data(pose_frame)
-
-            rpy = self.rvec_to_rpy(t_rvec)
-
-            # rpy[0] == roll, rpy[2] == yaw
-            if show_img:
-                # t_flag = max(abs(rpy[0]), abs(rpy[2])) > self.calibrate_thres
-                # if t_flag:
-                #     boo, bar = round(rpy[0], 3), round(rpy[2], 3)
-                #     t_msg = "roll: {}, yall: {} | expected: both < 1".format(boo, bar)
-                # else:
-                #     t_msg = "calibration angles are correct"
-
-                d2m, _, _ = self.get_trans_mat(img)
-
-                d_flag = d2m is None
-                if d_flag:
-                    d_msg = "aruco marker not detected"
-                else:
-                    d_msg = "aruco marker detected"
-
-                cv2.putText(img, d_msg, (0, 64), self.font, 1, (255, 255, 0), 2, self.line_type)
-                cv2.imshow("frame", img)
-
-                key = cv2.waitKey(100)
-                key_ord = key & 0xFF
-
-                if not d_flag:  # and (key_ord == ord('s') or key == ord('S')):
-                    self.d2m = d2m
-                    self.t2d = self.cam2cam(t_rvec, t_tvec)
-                    self.t2m = self.d2m @ self.t2d
-                    self.calibrated = True
-                    self.restart(t_cam=True)
-                    print("calibration success: matrices loaded")
-            else:
-                # sleep for the command line mode since 
-                time.sleep(0.5)
-                if max(rpy[0], rpy[2]) > self.calibrate_thres:
-                    print("calibration fails:")
-                    print("roll: {}, yall: {} | expected: both < 1".format(rpy[0], rpy[2]))
-                    continue
-
-                d2m, tvec, rvec = self.get_trans_mat(img)
-                if d2m is None:
-                    print("calibration fails: \naruco marker not detected")
-                else:
-                    self.d2m = d2m
-                    self.t2d = self.cam2cam(t_rvec, t_tvec)
-                    self.t2m = self.d2m @ self.t2d
-                    self.calibrated = True
-                    self.restart(t_cam=True)
-                    print("calibration success: matrices loaded")
 
     def set_intrinsics(self):
         rgb_intr = self.prof_d.get_stream(rs.stream.color).as_video_stream_profile().get_intrinsics()
@@ -247,27 +196,15 @@ class RealsenseD435iAndT265(object):
 
                 self.recaliberate(uncaliberated_tvec=t_tvec,
                                   uncaliberated_rvec=t_rvec)
-                self.location = t_tvec[:3]
-                self.rotation = self.rvec_to_rpy(rvec=t_rvec)
-                self.velocity = t_vvec[:3]
             else:
-                location, rotation, velocity = self.to_global_coord(t_tvec, t_rvec, t_vvec)
-                self.location, self.rotation, self.velocity = self.to_roar_coord(location, rotation, velocity)
+                self.location, self.rotation, self.velocity = self.to_global_coord(t_tvec, t_rvec, t_vvec)
+                # self.location, self.rotation, self.velocity = self.to_roar_coord(location, rotation, velocity)
 
             return True
 
         except Exception as e:
             logging.error(e)
             return False
-
-    def to_roar_coord(self, location, rotation, velocity) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        # print(self.global_to_roar_reflection_matrix, location)
-        new_location = self.global_to_roar_reflection_matrix @ location
-        new_rotation = self.rotation_matrix_to_euler(self.global_to_roar_reflection_matrix @ \
-                       self.euler_to_rotation_matrix(roll=rotation[0], pitch=rotation[1], yaw=rotation[2]) @ \
-                       self.global_to_roar_reflection_matrix)
-        new_velocity = self.global_to_roar_reflection_matrix @ velocity
-        return new_location, new_rotation, new_velocity
 
     def to_global_coord(self,
                         t_tvec: np.ndarray,
@@ -290,7 +227,8 @@ class RealsenseD435iAndT265(object):
             raise Exception("Uncaliberated Error")
         else:
             location = (self.t2m @ t_tvec)[:3]
-            rotation = self.rvec_to_rpy(rvec=t_rvec)  # TODO: figure out how to do this rotation transformation
+            rotation = self.rvec_to_rpy(rvec=t_rvec)
+            rotation = np.array([-rotation[0], rotation[1], -rotation[2]])
             velocity = np.array([-t_vvec[0], -t_vvec[1], t_vvec[2]])
             return location, rotation, velocity
 
@@ -345,13 +283,6 @@ class RealsenseD435iAndT265(object):
         roll = m.atan2(2.0 * (w * x + y * z), w * w - x * x - y * y + z * z) * 180.0 / m.pi
         yaw = m.atan2(2.0 * (w * z + x * y), w * w + x * x - y * y - z * z) * 180.0 / m.pi
         return np.array([roll, pitch, yaw])
-
-    def run_threaded(self):
-        while True:
-            try:
-                self.poll()
-            except Exception as e:
-                self.logger.error(e)
 
     """
     This is a transformation from the d-camera's coord system to the marker's (world) system
@@ -414,21 +345,25 @@ class RealsenseD435iAndT265(object):
         return mat
 
     def get_trans_mat(self, img):
-        corners, ids, _ = aruco.detectMarkers(img, self.aruco_dict, parameters=self.parameters)
-        if ids:  # there's at least one aruco marker in sight
-            rvec, tvec, _ = aruco.estimatePoseSingleMarkers(corners, self.block_size,
-                                                            self.rgb_camera_intrinsics,
-                                                            self.rgb_camera_distortion_coefficients)
-            d2m = self.cam2marker(rvec, tvec)
-
-            if self.show_gui:
-                aruco.drawAxis(img, self.rgb_camera_intrinsics, self.rgb_camera_distortion_coefficients, rvec[0],
-                               tvec[0], 0.01)
-                aruco.drawDetectedMarkers(img, corners)
-
-            return d2m, tvec, rvec
-        else:
+        corners, aruco_ids, _ = aruco.detectMarkers(img, self.aruco_dict, parameters=self.parameters)
+        if aruco_ids is None:
             return None, None, None
+        else:
+            for index in range(len(aruco_ids)):
+                if aruco_ids[index][0] == 0:  # i am seeing aruco id=0
+                    rvec, tvec, _ = aruco.estimatePoseSingleMarkers(corners[index], self.block_size,
+                                                                    self.rgb_camera_intrinsics,
+                                                                    self.rgb_camera_distortion_coefficients)
+                    d2m = self.cam2marker(rvec, tvec)
+
+                    if self.show_gui:
+                        aruco.drawAxis(img, self.rgb_camera_intrinsics, self.rgb_camera_distortion_coefficients,
+                                       rvec[0],
+                                       tvec[0], 0.01)
+                        aruco.drawDetectedMarkers(img, corners)
+
+                    return d2m, tvec, rvec
+
     @staticmethod
     def euler_to_rotation_matrix(roll: float, pitch: float, yaw: float) -> np.ndarray:
         """
@@ -471,12 +406,14 @@ class RealsenseD435iAndT265(object):
         return R_yaw @ R_pitch @ R_roll
 
     @staticmethod
-    def rotation_matrix_to_euler(matrix:np.ndarray):
+    def rotation_matrix_to_euler(matrix: np.ndarray):
         r11, r21, r31, r32, r33 = matrix[0][0], matrix[1][0], matrix[2][0], matrix[2][1], matrix[2][2]
         yaw = alpha = np.degrees(np.arctan2(r21, r11))
         pitch = beta = np.degrees(np.arctan2(-r31, np.sqrt(r32 ** 2 + r33 ** 2)))
         roll = gamma = np.degrees(np.arctan2(r32, r33))
         return np.array([roll, pitch, yaw])
+
+
 if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                         datefmt="%H:%M:%S", level=logging.DEBUG)
@@ -506,4 +443,3 @@ if __name__ == '__main__':
             exit(1)
         elif key_ord == ord('r'):
             camera.calibrated = False
-

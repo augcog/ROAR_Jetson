@@ -8,20 +8,18 @@ from ROAR_Jetson.arduino_cmd_sender import ArduinoCommandSender
 from ROAR.agent_module.agent import Agent
 from ROAR.utilities_module.data_structures_models import Transform
 from Bridges.jetson_bridge import JetsonBridge
-from ROAR_Jetson.camera import RS_D435i, RS_T265
 import logging
 import pygame
 from ROAR_Jetson.jetson_keyboard_control import JetsonKeyboardControl
 import numpy as np
 from ROAR_Jetson.configurations.configuration import Configuration as JetsonConfig
 from ROAR_Jetson.arduino_receiver import ArduinoReceiver
-from ROAR_Jetson.vive.vive_tracker_client import ViveTrackerClient
-from ROAR_Jetson.vive.models import ViveTrackerMessage
 import serial
 import sys
 from pathlib import Path
 import cv2
 from ROAR_Jetson.camera_d_t import RealsenseD435iAndT265 as D435AndT265
+
 
 class JetsonRunner:
     """
@@ -41,19 +39,17 @@ class JetsonRunner:
         self.serial: Optional[serial.Serial] = None
         self.transform = Transform()
         self.controller = JetsonKeyboardControl()
-        self.rs_d435i: Optional[RS_D435i] = None
-        self.t265: Optional[RS_T265] = None
         self.d435_and_t265: Optional[D435AndT265] = None
-        self.vive_tracker: Optional[ViveTrackerClient] = None
 
         if jetson_config.initiate_pygame:
             self.setup_pygame()
         self.setup_serial()
         self.setup_jetson_vehicle()
+        self.jetson_vehicle.start_parts()
 
         self.auto_pilot = True
         self.pygame_initiated = False
-        self.logger.info("Jetson Vehicle Connected and Intialized. All Hardware is online and running")
+        self.logger.info("Jetson Vehicle Connected and Initialized. All hardware running")
 
     def setup_pygame(self):
         """
@@ -95,158 +91,78 @@ class JetsonRunner:
 
         if self.jetson_config.use_t265 and self.jetson_config.use_t265:
             self._setup_d435i_and_t265()
-        else:
-            if self.jetson_config.use_d435i:
-                self._setup_d435i()
-            if self.jetson_config.use_t265:
-                self._setup_t265()
-        if self.jetson_config.use_vive_tracker:
-            self._setup_vive_tracker()
+
+    def _setup_arduino(self):
+        pass
 
     def _setup_d435i_and_t265(self):
         self.d435_and_t265 = D435AndT265()
-        self.jetson_vehicle.add(self.d435_and_t265, threaded=True)
-
-    def _setup_t265(self):
-        try:
-            self.t265 = RS_T265()
-            self.jetson_vehicle.add(self.t265, threaded=True)
-        except Exception as e:
-            self.logger.error(f"Failed to initalize Vive Tracker: {e}")
-
-    def _setup_vive_tracker(self):
-        try:
-            self.vive_tracker = ViveTrackerClient(host=self.jetson_config.vive_tracker_host,
-                                                  port=self.jetson_config.vive_tracker_port,
-                                                  tracker_name=self.jetson_config.vive_tracker_name)
-            self.jetson_vehicle.add(self.vive_tracker, threaded=True)
-        except Exception as e:
-            self.logger.error(f"Failed to initalize Vive Tracker: {e}")
-
-    def _setup_d435i(self):
-        try:
-            self.rs_d435i = RS_D435i(image_w=self.agent.front_rgb_camera.image_size_x,
-                                     image_h=self.agent.front_rgb_camera.image_size_y,
-                                     image_output=True)
-            self.jetson_vehicle.add(self.rs_d435i, threaded=True)
-        except Exception as e:
-            self.logger.error(f"Unable to connect to Intel Realsense: {e}")
-
-    def _setup_arduino(self):
-        try:
-            self.jetson_vehicle.add(ArduinoCommandSender(serial=self.serial,
-                                                         throttle_reversed=self.jetson_config.throttle_reversed,
-                                                         servo_throttle_range=[self.jetson_config.motor_min,
-                                                                               self.jetson_config.motor_max],
-                                                         servo_steering_range=[self.jetson_config.theta_min,
-                                                                               self.jetson_config.theta_max]),
-                                    inputs=['throttle', 'steering'], threaded=True)
-        except Exception as e:
-            self.logger.error(f"Ignoring Error during ArduinoCommandSender set up: {e}")
-
-        try:
-            self.jetson_vehicle.add(ArduinoReceiver(serial=self.serial, client_ip=self.jetson_config.client_ip),
-                                    threaded=True)
-        except Exception as e:
-            self.logger.error(f"Ignoring Error during ArduinoReceiver setup: {e}")
+        self.jetson_vehicle.add(self.d435_and_t265)
+        self.agent.front_rgb_camera.intrinsics_matrix = self.d435_and_t265.rgb_camera_intrinsics
+        self.agent.front_rgb_camera.distortion_coefficient = self.d435_and_t265.rgb_camera_distortion_coefficients
+        self.agent.front_depth_camera.intrinsics_matrix = self.d435_and_t265.rgb_camera_distortion_coefficients
+        self.agent.front_depth_camera.distortion_coefficient = self.d435_and_t265.depth_camera_distortion_coefficients
+        self.logger.info("D435 and T265 cam set up complete")
 
     def start_game_loop(self, use_manual_control=False):
         self.logger.info("Starting Game Loop")
         try:
-            self.jetson_vehicle.start_part_threads()
             self.agent.start_module_threads()
+
             clock = pygame.time.Clock()
             should_continue = True
             while should_continue:
                 clock.tick_busy_loop(60)
 
-                # assign intrinsics matrix as soon as it arrives
-                self._assign_camera_intrinsics()
-
                 # pass throttle and steering into the bridge
                 sensors_data, vehicle = self.convert_data()
 
-                # run a step of agent
                 vehicle_control = VehicleControl()
                 if self.auto_pilot:
-                    vehicle_control: VehicleControl = self.agent.run_step(sensors_data=sensors_data, vehicle=vehicle)
+                    vehicle_control = self.agent.run_step(sensors_data=sensors_data, vehicle=vehicle)
 
-                # manual control always take precedence
+                should_continue, manual_vehicle_control = self.update_pygame(clock=clock)
                 if use_manual_control:
-                    should_continue, vehicle_control = self.update_pygame(clock=clock)
-                else:
-                    should_continue, _ = self.update_pygame(clock=clock)
-                    # uncomment to not display on pygame on autodrive mode
-                    # should_continue, _ = self.update_pygame_keyboard(clock=clock)
-                # self.logger.debug(f"Vehicle Control = [{vehicle_control}]")
-                # pass the output into sender to send it
+                    vehicle_control = manual_vehicle_control
 
-                self.jetson_vehicle.update_parts(new_throttle=vehicle_control.throttle,
-                                                 new_steering=vehicle_control.steering)
+                self.jetson_vehicle.throttle = vehicle_control.throttle
+                self.jetson_vehicle.steering = vehicle_control.steering
         except KeyboardInterrupt:
             self.logger.info("Keyboard Interrupt detected. Safely quitting")
-            self.jetson_vehicle.stop()
         except Exception as e:
             self.logger.error(f"Something bad happened: [{e}]")
         finally:
             self.on_finish()
 
     def on_finish(self):
-        self.jetson_vehicle.stop()
+        self.jetson_vehicle.stop_parts()
         self.agent.shutdown_module_threads()
 
     def convert_data(self) -> Tuple[SensorsData, Vehicle]:
-        """
-        Convert sensor and vehicle state data from source to agent
-        Returns:
-            SensorsData and Vehicle state.
-        """
+        self.logger.debug("Converting data")
+        sensor_data: SensorsData = self.jetson_bridge.convert_sensor_data_from_source_to_agent(
+            source={
+                "front_rgb": self.d435_and_t265.color_image,
+                "rear_rgb": None,
+                "front_depth": self.d435_and_t265.depth_image,
+                "imu_data": None,
+                "location": self.d435_and_t265.location,
+                "rotation": self.d435_and_t265.rotation,
+                "velocity": self.d435_and_t265.velocity
+            })
+        vehicle: Vehicle = self.jetson_bridge.convert_vehicle_from_source_to_agent(
+            source=self.jetson_vehicle
+        )
+        vehicle.transform = Transform(location=sensor_data.location, rotation=sensor_data.rotation)
+        vehicle.velocity = sensor_data.velocity
 
-        if self.jetson_config.use_t265 and self.jetson_config.use_d435i:
-            sensors_data: SensorsData = self.jetson_bridge.convert_sensor_data_from_source_to_agent(
-                source={
-                    "front_rgb": self.d435_and_t265.color_frame,
-                    "rear_rgb": None,
-                    "front_depth": self.d435_and_t265.depth_frame,
-                    "imu": None,
-                    "t265_tracking": self.d435_and_t265,
-                    "vive_tracking": self.vive_tracker.latest_tracker_message
-                    if self.vive_tracker is not None and self.vive_tracker.latest_tracker_message is not None else None
-                }
-            )
-            if sensors_data.vive_tracker_data is not None:
-                self.jetson_vehicle.location = sensors_data.vive_tracker_data.location.to_array()
-                self.jetson_vehicle.rotation = sensors_data.vive_tracker_data.rotation.to_array()
-                self.jetson_vehicle.velocity = sensors_data.vive_tracker_data.velocity.to_array()
-            new_vehicle = self.jetson_bridge.convert_vehicle_from_source_to_agent(self.jetson_vehicle)
-            return sensors_data, new_vehicle
-        else:
-            # old configuration
-            sensors_data: SensorsData = self.jetson_bridge.convert_sensor_data_from_source_to_agent(
-                source={
-                    "front_rgb": self.jetson_vehicle.front_rgb_img,
-                    "rear_rgb": None,
-                    "front_depth": self.jetson_vehicle.front_depth_img,
-                    "imu": None,
-                    "t265_tracking": self.t265,
-                    "vive_tracking": self.vive_tracker.latest_tracker_message
-                    if self.vive_tracker is not None and self.vive_tracker.latest_tracker_message is not None else None
-                }
-            )
-            if sensors_data.vive_tracker_data is not None:
-                self.jetson_vehicle.location = sensors_data.vive_tracker_data.location.to_array()
-                self.jetson_vehicle.rotation = sensors_data.vive_tracker_data.rotation.to_array()
-                self.jetson_vehicle.velocity = sensors_data.vive_tracker_data.velocity.to_array()
-            new_vehicle = self.jetson_bridge.convert_vehicle_from_source_to_agent(self.jetson_vehicle)
-            return sensors_data, new_vehicle
+        return sensor_data, vehicle
 
     def update_pygame(self, clock) -> Tuple[bool, VehicleControl]:
         """
         Update the pygame window, including parsing keypress
-
         Args:
             clock: pygame clock
-
         Returns:
             bool - whether to continue the game
             VehicleControl - the new VehicleControl cmd by the keyboard
@@ -256,16 +172,4 @@ class JetsonRunner:
             surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
             self.display.blit(surface, (0, 0))
         pygame.display.flip()
-        return self.update_pygame_keyboard(clock=clock)
-
-    def update_pygame_keyboard(self, clock):
         return self.controller.parse_events(clock=clock)
-
-    def _assign_camera_intrinsics(self):
-        if self.rs_d435i is not None:
-            if self.rs_d435i.depth_camera_intrinsics is not None:
-                self.agent.front_depth_camera.intrinsics_matrix = self.rs_d435i.depth_camera_intrinsics
-                self.agent.front_depth_camera.distortion_coefficient = self.rs_d435i.depth_camera_distortion_coefficients
-            if self.rs_d435i.rgb_camera_intrinsics is not None:
-                self.agent.front_rgb_camera.intrinsics_matrix = self.rs_d435i.rgb_camera_intrinsics
-                self.agent.front_rgb_camera.distortion_coefficient = self.rs_d435i.rgb_camera_distortion_coefficients
