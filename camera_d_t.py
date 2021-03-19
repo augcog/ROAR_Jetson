@@ -72,8 +72,8 @@ class RealsenseD435iAndT265(Part):
             raise ConnectionError(f"Error {e}. Pipeline Initialization Error")
 
         self.calibrated = False
-        # setup all the color/depth frame intrinsics (distortion coefficients + camera matrix)
-        self.set_intrinsics()
+        # loadup all the color/depth frame intrinsics (distortion coefficients + camera matrix)
+        self.load_intrinsics()
 
         # detection related params
         self.aruco_dict = aruco.Dictionary_get(CAM_CONFIG['aruco_dict'])
@@ -112,7 +112,7 @@ class RealsenseD435iAndT265(Part):
             raise ConnectionError(f"T265 unable to shutdown: {e}")
 
 
-    def set_intrinsics(self):
+    def load_intrinsics(self):
         rgb_intr = self.prof_d.get_stream(rs.stream.color).as_video_stream_profile().get_intrinsics()
         self.rgb_camera_intrinsics = np.array([[rgb_intr.fx, 0, rgb_intr.ppx],
                                                [0, rgb_intr.fy, rgb_intr.ppy],
