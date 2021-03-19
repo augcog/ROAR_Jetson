@@ -11,6 +11,7 @@ try:
     from ROAR_Jetson.part import Part
 except:
     from part import Part
+
 CAM_CONFIG = {
     "image_w": 640,  # image width
     "image_h": 480,  # image height
@@ -18,7 +19,7 @@ CAM_CONFIG = {
     "aruco_dict": aruco.DICT_5X5_250,  # dictionary used in aruco
     "aruco_thres": 10,  # aruco marker threshold, internal parameter
     "aruco_block_size": 0.1592,  # length of aruco marker's side in meter
-    "use_default_cam2cam": False,  # recommended true, no rotation is calculated
+    "use_default_cam2cam": False,  # recommended false
     "detect_mode": False,  # useful only in show_gui mode where a aruco-marker detection reference is given
     "calibrate_threshold": 1  # calibrate threshold in degree
 }
@@ -146,7 +147,7 @@ class RealsenseD435iAndT265(Part):
                 self.pipe_d.stop()
                 self.prof_d = self.pipe_d.start(self.cfg_d)
         except Exception as e:
-            raise ConnectionError(f"Error {e}. Pipeline Initialization Error")
+            raise ConnectionError(f"Error {e}. Pipeline Restart Error")
 
     def start_detect(self):
         self.detect_mode = True
@@ -154,14 +155,18 @@ class RealsenseD435iAndT265(Part):
     def stop_detect(self):
         self.detect_mode = False
 
-    def recaliberate(self,
-                     uncaliberated_tvec: np.ndarray,
-                     uncaliberated_rvec: np.ndarray):
+    def recaliberate(self):
         d2m, _, _ = self.get_trans_mat(self.color_image)
         is_aruco_marker_detected = d2m is not None  # true if aruco marker detected, false otherwise
+
         if is_aruco_marker_detected:
+            # restart the t-camera to reset its origin
+            self.restart(t_cam=True)
+            pose_frame = self.pipe_t.wait_for_frames().get_pose_frame()
+            t_tvec, t_rvec, _ = self.pose_frame_data(pose_frame)
+
             self.d2m = d2m
-            self.t2d = self.cam2cam(uncaliberated_tvec, uncaliberated_rvec)
+            self.t2d = self.cam2cam(t_tvec, t_rvec)
             self.t2m = self.d2m @ self.t2d
             self.calibrated = True
         else:
@@ -187,18 +192,15 @@ class RealsenseD435iAndT265(Part):
 
             self.color_image: np.ndarray = np.asanyarray(color_frame.get_data())
             self.depth_image: np.ndarray = np.asanyarray(depth_frame.get_data())
-
-            frame_t = self.pipe_t.wait_for_frames()
-            pose_frame = frame_t.get_pose_frame()
-            t_tvec, t_rvec, t_vvec = self.pose_frame_data(pose_frame)
+            
             if self.calibrated is False:
                 self.logger.info("Warning: System is not caliberated")
-
-                self.recaliberate(uncaliberated_tvec=t_tvec,
-                                  uncaliberated_rvec=t_rvec)
+                self.recaliberate()
             else:
+                frame_t = self.pipe_t.wait_for_frames()
+                pose_frame = frame_t.get_pose_frame()
+                t_tvec, t_rvec, t_vvec = self.pose_frame_data(pose_frame)
                 self.location, self.rotation, self.velocity = self.to_global_coord(t_tvec, t_rvec, t_vvec)
-                # self.location, self.rotation, self.velocity = self.to_roar_coord(location, rotation, velocity)
 
             return True
 
@@ -226,6 +228,7 @@ class RealsenseD435iAndT265(Part):
             self.logger.error("Cannot convert to global coord because system is registered as uncaliberated")
             raise Exception("Uncaliberated Error")
         else:
+            print(t_tvec)
             location = (self.t2m @ t_tvec)[:3]
             rotation = self.rvec_to_rpy(rvec=t_rvec)
             rotation = np.array([-rotation[0], rotation[1], -rotation[2]])
@@ -305,8 +308,6 @@ class RealsenseD435iAndT265(Part):
     ** Why do we need to do this since these cameras are installed together? ** 
     1) t's coordinate axes are aligned independent of its own physical rotation, while
     d's are dependent.
-    2) there's still some minor translation between their coordinate systems, which will
-    be implemented later :TODO @Star
     """
 
     def cam2cam(self, t_rvec, t_tvec):
@@ -342,6 +343,9 @@ class RealsenseD435iAndT265(Part):
         mat[2, 2] = 1 - 2 * r[0] ** 2 - 2 * r[1]
 
         mat = np.linalg.inv(mat)
+
+        print(r)
+        print(mat)
         return mat
 
     def get_trans_mat(self, img):
@@ -426,14 +430,8 @@ if __name__ == '__main__':
                     org=(10, 25), fontFace=camera.font, fontScale=0.5,
                     color=(255, 255, 0), thickness=1, lineType=camera.line_type)
         cv2.putText(img=img, text=f"{camera.location}",
-                    org=(10, 50), fontFace=camera.font, fontScale=0.5,
-                    color=(255, 255, 0), thickness=1, lineType=camera.line_type)
-        cv2.putText(img=img, text=f"{camera.rotation}",
-                    org=(10, 75), fontFace=camera.font, fontScale=0.5,
-                    color=(255, 255, 0), thickness=1, lineType=camera.line_type)
-        cv2.putText(img=img, text=f"{camera.velocity}",
-                    org=(10, 100), fontFace=camera.font, fontScale=0.5,
-                    color=(255, 255, 0), thickness=1, lineType=camera.line_type)
+                    org=(10, 50), fontFace=camera.font, fontScale=0.7,
+                    color=(0, 255, 0), thickness=1, lineType=camera.line_type)
 
         cv2.imshow("frame", img)
         key = cv2.waitKey(100)
