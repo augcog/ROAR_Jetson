@@ -228,7 +228,6 @@ class RealsenseD435iAndT265(Part):
             self.logger.error("Cannot convert to global coord because system is registered as uncaliberated")
             raise Exception("Uncaliberated Error")
         else:
-            print(t_tvec)
             location = (self.t2m @ t_tvec)[:3]
             rotation = self.rvec_to_rpy(rvec=t_rvec)
             rotation = np.array([-rotation[0], rotation[1], -rotation[2]])
@@ -343,9 +342,6 @@ class RealsenseD435iAndT265(Part):
         mat[2, 2] = 1 - 2 * r[0] ** 2 - 2 * r[1]
 
         mat = np.linalg.inv(mat)
-
-        print(r)
-        print(mat)
         return mat
 
     def get_trans_mat(self, img):
