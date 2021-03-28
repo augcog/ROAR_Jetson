@@ -36,7 +36,7 @@ volatile uint32_t unChannel2InShared;
 
 void setup()
 {
-  Serial.begin(115200);
+  Serial.begin(9600);
 
   servoChannel1.attach(CHANNEL1_OUT_PIN);
   servoChannel2.attach(CHANNEL2_OUT_PIN);
@@ -87,10 +87,10 @@ void loop()
     //interrupts();
   }
 
-    Serial.println();
-    Serial.print(unChannel1In);
-    Serial.print(",");
-    Serial.print(unChannel2In);
+//    Serial.println();
+//    Serial.print(unChannel1In);
+//    Serial.print(",");
+//    Serial.print(unChannel2In);
 
 
   throttle_read = unChannel2In;
@@ -110,10 +110,10 @@ void loop()
       steering_write = 1900;
     } else {
 
-      // NEW REQUIRED FORMAT: "HANDSHAKE" "PWMTHROTTLE" "STEERINGIN"
+      // NEW REQUIRED FORMAT: "HANDSHAKE" "PWMTHROTTLE" "STEERING" "\r"
       // (neutral formatting): & 1500 1500 \r
 
-      byte size = Serial.readBytesUntil('\r',receivedData, 50); //reads serial data into buffer and times out after 100ms
+      byte size = Serial.readBytesUntil('\r',receivedData, 100); //reads serial data into buffer and times out after 100ms
       receivedData[size] = 0; //end of the string can be specified with a 0.
       char *s = strtok(receivedData, " "); //allows string to be broken into tokens by " ".
       if (s[0] == handshake) {
@@ -124,16 +124,15 @@ void loop()
         steering_write = steering_read;
         throttle_write = throttle_read;
       } 
-//      else {
-//
-//        throttle_write = 1500; //neutral PWM
-//        steering_write = 1500; //neutral PWM
-//
-//      }
     }
 
     servoChannel2.writeMicroseconds(throttle_write);
     servoChannel1.writeMicroseconds(steering_write);
+
+    Serial.println();
+    Serial.print(throttle_write);
+    Serial.print(",");
+    Serial.print(steering_write);
   }
 
   bUpdateFlags = 0;

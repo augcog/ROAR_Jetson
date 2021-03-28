@@ -22,13 +22,15 @@ class ArduinoCommandSender:
                  agent_throttle_range: Optional[List] = None,
                  agent_steering_range: Optional[List] = None,
                  servo_throttle_range: Optional[List] = None,
-                 servo_steering_range: Optional[List] = None):
+                 servo_steering_range: Optional[List] = None,
+                 throttle_reversed = False):
         """
         Initialize parameters.
 
         Args:
             min_command_time_gap: minimum command duration between two commands
         """
+        self.throttle_reversed = throttle_reversed
         if agent_steering_range is None:
             agent_steering_range = [-1, 1]
         if agent_throttle_range is None:
@@ -49,6 +51,8 @@ class ArduinoCommandSender:
         self.agent_steering_range = agent_steering_range
         self.servo_throttle_range = servo_throttle_range
         self.servo_steering_range = servo_steering_range
+
+        self.forward_mode = True
         self.logger = logging.getLogger("Jetson CMD Sender")
         self.logger.debug("Jetson CMD Sender Initialized")
 
@@ -67,12 +71,12 @@ class ArduinoCommandSender:
         Returns:
             None
         """
-
-        if self.last_cmd_time is None:
-            self.last_cmd_time = time.time()
-        elif time.time() - self.last_cmd_time > self.min_command_time_gap:
-            self.send_cmd(throttle=throttle, steering=steering)
-            self.last_cmd_time = time.time()
+        if self.serial is not None:
+            if self.last_cmd_time is None:
+                self.last_cmd_time = time.time()
+            elif time.time() - self.last_cmd_time > self.min_command_time_gap:
+                self.send_cmd(throttle=throttle, steering=steering)
+                self.last_cmd_time = time.time()
 
     def send_cmd(self, throttle, steering):
         """
@@ -84,6 +88,18 @@ class ArduinoCommandSender:
         Returns:
             None
         """
+        if self.forward_mode and throttle < 0:
+            # servo
+            self.logger.debug("Switching to R")
+            self.forward_mode = False
+        if self.forward_mode is False and throttle > 0:
+            self.logger.debug("Switching to D")
+            self.forward_mode = True
+
+        if self.throttle_reversed:
+            throttle = -1 * throttle
+        self.prev_throttle = throttle
+        self.prev_steering = steering
         throttle_send, steering_send = self.map_control(throttle, steering)
         try:
             self.send_cmd_helper(new_throttle=throttle_send, new_steering=steering_send)
@@ -103,12 +119,10 @@ class ArduinoCommandSender:
         Returns:
 
         """
-        if self.prev_throttle != new_throttle or self.prev_steering != new_steering:
-            serial_msg = '& {} {}\r'.format(new_throttle, new_steering)
-            self.logger.debug(f"Sending [{serial_msg.rstrip()}]")
-            self.serial.write(serial_msg.encode('ascii'))
-            self.prev_throttle = new_throttle
-            self.prev_steering = new_steering
+        # if self.prev_throttle != new_throttle or self.prev_steering != new_steering:
+        serial_msg = '({},{})'.format(new_throttle, new_steering)
+        # self.logger.debug(f"Sending [{serial_msg.rstrip()}]")
+        self.serial.write(serial_msg.encode('ascii'))
 
     def shutdown(self):
         """
@@ -137,3 +151,11 @@ class ArduinoCommandSender:
                 int(np.interp(x=steering,
                               xp=self.agent_steering_range,
                               fp=self.servo_steering_range)))
+
+
+if __name__ == '__main__':
+    serial_connection = Serial("PORT ADDRESS HERE", baudrate=9600, timeout=0.5, writeTimeout=0.5)
+    arduino_cmd_sender = ArduinoCommandSender(serial=serial_connection)
+    for i in range(10):
+        arduino_cmd_sender.run_threaded(throttle=1, steering=1)
+        time.sleep(1)  # you cant send too fast!
