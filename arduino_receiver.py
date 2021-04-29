@@ -1,87 +1,40 @@
-import socket
+try:
+    from ROAR_Jetson.part import Part
+except:
+    from part import Part
 from serial import Serial
-import struct
-import sys
-import logging
 from typing import Optional
 
-MOTOR_MAX = 1750;
-MOTOR_MIN = 800;
-MOTOR_NEUTRAL = 1500;
-THETA_MAX = 3000;
-THETA_MIN = 0;
 
-COMMAND_THROTTLE = 0
-COMMAND_STEERING = 1
-UDP_PORT = 7788
+class ArduinoCommandReceiver(Part):
+    def __init__(self, s: Serial):
+        super().__init__(name="ArduinoCMDReceiver")
+        self.serial = s
+        self.throttle: Optional[float] = None
+        self.steering: Optional[float] = None
 
-
-class ArduinoReceiver:
-    def __init__(self, client_ip: str, serial: Optional[Serial] = None):
-        self.serial = serial if serial is not None else self._create_serial()
-        self.old_steering = 0.0
-        self.old_throttle = 0.0
-        self.new_steering = 0.0
-        self.new_throttle = 0.0
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.client_ip = client_ip
-        self.logger = logging.getLogger("Arduino Receiver")
-        self.logger.debug("Receiver Initialized")
-
-    @staticmethod
-    def _create_serial():
-        if 'win' in sys.platform:
-            serial = Serial(port='COM4', baudrate=9600, timeout=1, writeTimeout=1)
-        else:
-            serial = Serial(port='/dev/ttyACM0', baudrate=9600, timeout=1, writeTimeout=1)
-        return serial
-
-    def update(self):
-        while True:
+    def run_step(self):
+        if self.serial is not None:
             try:
                 vel_wheel = self.serial.readline().decode().rstrip()
                 rpm_throttle, rpm_steering = vel_wheel.split(",")
-                # self.logger.debug(f"rpm_throttle = {rpm_throttle} | rpm_steering = {rpm_steering}")
+                print(rpm_throttle, rpm_steering)
             except Exception as e:
-                pass
-                # self.logger.error(e)
-            # vel_wheel = vel_wheel[2:][:-5]
-            # vel_wheel = vel_wheel.split()
-            # try:
-            #     throttle, steering = vel_wheel
-            #     throttle = float(throttle)
-            #     steering = float(steering)
-            # except:
-            #     continue
-            # # TODO @ Yuri, you might want to re-do this part to match the jetson_cmd_sender
-            # # https://github.com/augcog/ROAR_Jetson/blob/revamp/jetson_cmd_sender.py#L126
-            # if self.new_throttle >= MOTOR_NEUTRAL:
-            #     self.new_throttle = float(throttle - MOTOR_NEUTRAL) / (MOTOR_MAX - MOTOR_NEUTRAL)
-            # else:
-            #     self.new_throttle = float(throttle - MOTOR_NEUTRAL) / (MOTOR_NEUTRAL - MOTOR_MIN)
-            # self.new_throttle = max(-1, self.new_throttle)
-            # self.new_throttle = min(1, self.new_throttle)
-            # self.new_steering = float(steering - THETA_MIN) / (THETA_MAX - THETA_MIN) * 2 - 1
-            # self.new_steering = max(-1, self.new_steering)
-            # self.new_steering = min(1, self.new_steering)
+                self.logger.error(e)
 
-    def run_threaded(self, **args):
-        if self.new_throttle != self.old_throttle:
-            msg = struct.pack('>Ii', COMMAND_THROTTLE, int(self.new_throttle * 32767))
-            self.sock.sendto(msg, (self.client_ip, UDP_PORT))
-            self.old_throttle = self.new_throttle
-        if self.new_steering != self.old_steering:
-            msg = struct.pack('>Ii', COMMAND_STEERING, int(self.new_steering * 32767))
-            self.sock.sendto(msg, (self.client_ip, UDP_PORT))
-            self.old_steering = self.new_steering
+    def shutdown(self):
+        try:
+            self.serial.close()
+        except Exception as e:
+            self.logger.error(e)
 
 
-if __name__ == '__main__':
-    import time
+if __name__ == "__main__":
+    serial = Serial(port="COM6",
+                    baudrate=9600,
+                    timeout=0.5,
+                    writeTimeout=0.5)
+    receiver = ArduinoCommandReceiver(serial=serial)
+    while True:
+        receiver.run_step()
 
-    serial_connection = Serial("PORT ADDRESS HERE", baudrate=9600, timeout=0.5, writeTimeout=0.5)
-    arduino_cmd_receiver = ArduinoReceiver(client_ip="localhost", serial=serial_connection)
-    for i in range(10):
-        arduino_cmd_receiver.run_threaded()
-        print(arduino_cmd_receiver.new_throttle, arduino_cmd_receiver.new_steering)
-        time.sleep(1)  # you cant send too fast!

@@ -10,8 +10,8 @@
     "motor_min": 1350,
     "win_serial_port": "COM6",
     "use_vive_tracker": false,
-    "use_d435i": true,
-    "use_t265": true,
+    "use_d435i": false,
+    "use_t265": false,
     "use_arduino": true
 
 }

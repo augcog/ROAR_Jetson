@@ -3,13 +3,17 @@ import logging
 import time
 import numpy as np
 from typing import List, Tuple, Optional
-from ROAR_Jetson.part import Part
-from ROAR_Jetson.jetson_vehicle import Vehicle
-MOTOR_MAX = 1750
-MOTOR_MIN = 800
+try:
+    from ROAR_Jetson.part import Part
+    from ROAR_Jetson.jetson_vehicle import Vehicle
+except:
+    from part import Part
+    from jetson_vehicle import Vehicle
+MOTOR_MAX = 2000
+MOTOR_MIN = 1000
 MOTOR_NEUTRAL = 1500
-THETA_MAX = 3000
-THETA_MIN = 0
+THETA_MAX = 2000
+THETA_MIN = 1000
 
 
 class ArduinoCommandSender(Part):
@@ -109,6 +113,7 @@ class ArduinoCommandSender(Part):
         # if self.prev_throttle != new_throttle or self.prev_steering != new_steering:
         serial_msg = '({},{})'.format(new_throttle, new_steering)
         self.logger.debug(f"Sending [{serial_msg.rstrip()}]")
+        print(f"Sending [{serial_msg.rstrip()}]")
         self.serial.write(serial_msg.encode('ascii'))
 
     def shutdown(self):
@@ -141,8 +146,13 @@ class ArduinoCommandSender(Part):
 
 
 if __name__ == '__main__':
-    serial_connection = Serial("PORT ADDRESS HERE", baudrate=9600, timeout=0.5, writeTimeout=0.5)
-    arduino_cmd_sender = ArduinoCommandSender(serial=serial_connection)
-    for i in range(10):
-        arduino_cmd_sender.run_threaded(throttle=1, steering=1)
-        time.sleep(1)  # you cant send too fast!
+    serial = Serial(port="COM6",
+                    baudrate=9600,
+                    timeout=0.5,
+                    writeTimeout=0.5)
+    sender = ArduinoCommandSender(serial=serial, jetson_vehicle=Vehicle())
+    while True:
+        val = input("Enter two values, split by [,]: ")
+        throttle, steerting = val.split(",")
+        sender.send_cmd(float(throttle), float(steerting))
+

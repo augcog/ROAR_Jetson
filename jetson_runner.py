@@ -13,7 +13,7 @@ import pygame
 from ROAR_Jetson.jetson_keyboard_control import JetsonKeyboardControl
 import numpy as np
 from ROAR_Jetson.configurations.configuration import Configuration as JetsonConfig
-from ROAR_Jetson.arduino_receiver import ArduinoReceiver
+from ROAR_Jetson.arduino_receiver import ArduinoCommandReceiver
 import serial
 import sys
 from pathlib import Path
@@ -102,7 +102,11 @@ class JetsonRunner:
                                                            servo_throttle_range=[self.jetson_config.motor_min,
                                                                                  self.jetson_config.motor_max]
                                                            )
+        self.arduino_command_receiver = ArduinoCommandReceiver(s=self.serial)
         self.jetson_vehicle.add(self.arduino_command_sender)
+        self.jetson_vehicle.add(self.arduino_command_receiver)
+
+
 
     def _setup_d435i_and_t265(self):
         self.d435_and_t265 = D435AndT265()
@@ -152,13 +156,13 @@ class JetsonRunner:
         self.logger.debug("Converting data")
         sensor_data: SensorsData = self.jetson_bridge.convert_sensor_data_from_source_to_agent(
             source={
-                "front_rgb": self.d435_and_t265.color_image,
+                "front_rgb": self.d435_and_t265.color_image if self.d435_and_t265 is not None else None,
                 "rear_rgb": None,
-                "front_depth": self.d435_and_t265.depth_image,
+                "front_depth": self.d435_and_t265.depth_image if self.d435_and_t265 is not None else None,
                 "imu_data": None,
-                "location": self.d435_and_t265.location,
-                "rotation": self.d435_and_t265.rotation,
-                "velocity": self.d435_and_t265.velocity
+                "location": self.d435_and_t265.location if self.d435_and_t265 is not None else [0,0,0],
+                "rotation": self.d435_and_t265.rotation if self.d435_and_t265 is not None else [0,0,0],
+                "velocity": self.d435_and_t265.velocity if self.d435_and_t265 is not None else [0,0,0]
             })
         vehicle: Vehicle = self.jetson_bridge.convert_vehicle_from_source_to_agent(
             source=self.jetson_vehicle

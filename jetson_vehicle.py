@@ -1,5 +1,8 @@
 from typing import List
-from ROAR_Jetson.part import Part
+try:
+    from ROAR_Jetson.part import Part
+except:
+    from part import Part
 import logging
 from threading import Thread
 import time
