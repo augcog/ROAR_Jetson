@@ -88,9 +88,11 @@ class JetsonRunner:
         """
         if self.jetson_config.use_arduino:
             self._setup_arduino()
-
+            print("arduino setted up")
+        
         if self.jetson_config.use_t265 and self.jetson_config.use_t265:
-            self._setup_d435i_and_t265()
+            self._setup_d435i_and_t265() 
+            print("camera set up done")
 
     def _setup_arduino(self):
         self.arduino_command_sender = ArduinoCommandSender(serial=self.serial,

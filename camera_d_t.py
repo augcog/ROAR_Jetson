@@ -65,8 +65,10 @@ class RealsenseD435iAndT265(Part):
         self.prof_d, self.prof_t = None, None
         self.aligned_d = rs.align(rs.stream.color)
         try:
-            self.prof_d = self.pipe_d.start(self.cfg_d)
+
             self.prof_t = self.pipe_t.start(self.cfg_t)
+            self.prof_d = self.pipe_d.start(self.cfg_d)
+            self.logger.info("cam initialized")
         except Exception as e:
             raise ConnectionError(f"Error {e}. Pipeline Initialization Error")
 
