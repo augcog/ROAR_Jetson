@@ -93,7 +93,14 @@ class JetsonRunner:
             self._setup_d435i_and_t265()
 
     def _setup_arduino(self):
-        pass
+        self.arduino_command_sender = ArduinoCommandSender(serial=self.serial,
+                                                           jetson_vehicle=self.jetson_vehicle,
+                                                           servo_steering_range=[self.jetson_config.theta_min,
+                                                                                 self.jetson_config.theta_max],
+                                                           servo_throttle_range=[self.jetson_config.motor_min,
+                                                                                 self.jetson_config.motor_max]
+                                                           )
+        self.jetson_vehicle.add(self.arduino_command_sender)
 
     def _setup_d435i_and_t265(self):
         self.d435_and_t265 = D435AndT265()
@@ -137,6 +144,7 @@ class JetsonRunner:
     def on_finish(self):
         self.jetson_vehicle.stop_parts()
         self.agent.shutdown_module_threads()
+        exit(0)  # forced closure
 
     def convert_data(self) -> Tuple[SensorsData, Vehicle]:
         self.logger.debug("Converting data")

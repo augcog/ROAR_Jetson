@@ -3,7 +3,8 @@ import logging
 import time
 import numpy as np
 from typing import List, Tuple, Optional
-
+from ROAR_Jetson.part import Part
+from ROAR_Jetson.jetson_vehicle import Vehicle
 MOTOR_MAX = 1750
 MOTOR_MIN = 800
 MOTOR_NEUTRAL = 1500
@@ -11,25 +12,21 @@ THETA_MAX = 3000
 THETA_MIN = 0
 
 
-class ArduinoCommandSender:
+class ArduinoCommandSender(Part):
     """
     Responsible for translating Agent Throttle and Steering to Servo (motor on the race car) RPM and issue the command
     """
 
-    def __init__(self,
-                 serial: Serial,
-                 min_command_time_gap: float = 0.1,
-                 agent_throttle_range: Optional[List] = None,
-                 agent_steering_range: Optional[List] = None,
-                 servo_throttle_range: Optional[List] = None,
-                 servo_steering_range: Optional[List] = None,
-                 throttle_reversed = False):
+    def __init__(self, serial: Serial, jetson_vehicle:Vehicle, min_command_time_gap: float = 0.1, agent_throttle_range: Optional[List] = None,
+                 agent_steering_range: Optional[List] = None, servo_throttle_range: Optional[List] = None,
+                 servo_steering_range: Optional[List] = None, throttle_reversed=False):
         """
         Initialize parameters.
 
         Args:
             min_command_time_gap: minimum command duration between two commands
         """
+        super().__init__(name="ArduinoCMDSender")
         self.throttle_reversed = throttle_reversed
         if agent_steering_range is None:
             agent_steering_range = [-1, 1]
@@ -52,31 +49,21 @@ class ArduinoCommandSender:
         self.servo_throttle_range = servo_throttle_range
         self.servo_steering_range = servo_steering_range
 
+        self.jetson_vehicle: Optional[Vehicle] = jetson_vehicle
+
         self.forward_mode = True
         self.logger = logging.getLogger("Jetson CMD Sender")
         self.logger.debug("Jetson CMD Sender Initialized")
 
-    def update(self):
-        pass
-
-    def run_threaded(self, throttle, steering, **args):
-        """
-        Run a step of command
-
-        Args:
-            throttle: new throttle, in the range of agent_throttle_range
-            steering: new steering, in the range of agent_steering_range
-            **args:
-
-        Returns:
-            None
-        """
-        if self.serial is not None:
-            if self.last_cmd_time is None:
-                self.last_cmd_time = time.time()
-            elif time.time() - self.last_cmd_time > self.min_command_time_gap:
-                self.send_cmd(throttle=throttle, steering=steering)
-                self.last_cmd_time = time.time()
+    def run_step(self):
+        if self.jetson_vehicle is not None:
+            throttle, steering = self.jetson_vehicle.throttle, self.jetson_vehicle.steering
+            if self.serial is not None:
+                if self.last_cmd_time is None:
+                    self.last_cmd_time = time.time()
+                elif time.time() - self.last_cmd_time > self.min_command_time_gap:
+                    self.send_cmd(throttle=throttle, steering=steering)
+                    self.last_cmd_time = time.time()
 
     def send_cmd(self, throttle, steering):
         """

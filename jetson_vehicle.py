@@ -42,3 +42,4 @@ class Vehicle:
             self.logger.error(f"Unable to gracefully shutdown all parts: {e}")
 
         self.logger.info("Vehicle Shut down safely")
+        exit(0) # sometimes python just freeze, just force quit it at this point since all thread must have been shut

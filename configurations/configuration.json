@@ -8,7 +8,7 @@
     "vive_tracker_name": "tracker_1",
     "motor_max": 1650,
     "motor_min": 1350,
-    "win_serial_port": "COM3",
+    "win_serial_port": "COM6",
     "use_vive_tracker": false,
     "use_d435i": true,
     "use_t265": true,
