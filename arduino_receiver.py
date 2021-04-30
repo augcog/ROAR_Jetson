@@ -17,8 +17,9 @@ class ArduinoCommandReceiver(Part):
         if self.serial is not None:
             try:
                 vel_wheel = self.serial.readline().decode().rstrip()
-                rpm_throttle, rpm_steering = vel_wheel.split(",")
-                print(rpm_throttle, rpm_steering)
+                rpm_throttle, rpm_steering = vel_wheel.split(",") # (XXX, YYY)
+                self.throttle = float(rpm_throttle[1:])
+                self.steering = float(rpm_steering[:-1])
             except Exception as e:
                 self.logger.error(e)
 
