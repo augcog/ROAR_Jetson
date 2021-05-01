@@ -89,9 +89,9 @@ class JetsonRunner:
         if self.jetson_config.use_arduino:
             self._setup_arduino()
             print("arduino setted up")
-        
+
         if self.jetson_config.use_t265 and self.jetson_config.use_t265:
-            self._setup_d435i_and_t265() 
+            self._setup_d435i_and_t265()
             print("camera set up done")
 
     def _setup_arduino(self):
@@ -106,15 +106,14 @@ class JetsonRunner:
         self.jetson_vehicle.add(self.arduino_command_sender)
         self.jetson_vehicle.add(self.arduino_command_receiver)
 
-
-
     def _setup_d435i_and_t265(self):
         self.d435_and_t265 = D435AndT265()
         self.jetson_vehicle.add(self.d435_and_t265)
         self.agent.front_rgb_camera.intrinsics_matrix = self.d435_and_t265.rgb_camera_intrinsics
         self.agent.front_rgb_camera.distortion_coefficient = self.d435_and_t265.rgb_camera_distortion_coefficients
-        self.agent.front_depth_camera.intrinsics_matrix = self.d435_and_t265.rgb_camera_distortion_coefficients
+        self.agent.front_depth_camera.intrinsics_matrix = self.d435_and_t265.depth_camera_intrinsics
         self.agent.front_depth_camera.distortion_coefficient = self.d435_and_t265.depth_camera_distortion_coefficients
+
         self.logger.info("D435 and T265 cam set up complete")
 
     def start_game_loop(self, use_manual_control=False):
@@ -160,9 +159,9 @@ class JetsonRunner:
                 "rear_rgb": None,
                 "front_depth": self.d435_and_t265.depth_image if self.d435_and_t265 is not None else None,
                 "imu_data": None,
-                "location": self.d435_and_t265.location if self.d435_and_t265 is not None else [0,0,0],
-                "rotation": self.d435_and_t265.rotation if self.d435_and_t265 is not None else [0,0,0],
-                "velocity": self.d435_and_t265.velocity if self.d435_and_t265 is not None else [0,0,0]
+                "location": self.d435_and_t265.location if self.d435_and_t265 is not None else [0, 0, 0],
+                "rotation": self.d435_and_t265.rotation if self.d435_and_t265 is not None else [0, 0, 0],
+                "velocity": self.d435_and_t265.velocity if self.d435_and_t265 is not None else [0, 0, 0]
             })
         vehicle: Vehicle = self.jetson_bridge.convert_vehicle_from_source_to_agent(
             source=self.jetson_vehicle
