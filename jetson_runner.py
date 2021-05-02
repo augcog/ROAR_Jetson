@@ -152,7 +152,6 @@ class JetsonRunner:
         exit(0)  # forced closure
 
     def convert_data(self) -> Tuple[SensorsData, Vehicle]:
-        self.logger.debug("Converting data")
         sensor_data: SensorsData = self.jetson_bridge.convert_sensor_data_from_source_to_agent(
             source={
                 "front_rgb": self.d435_and_t265.color_image if self.d435_and_t265 is not None else None,
