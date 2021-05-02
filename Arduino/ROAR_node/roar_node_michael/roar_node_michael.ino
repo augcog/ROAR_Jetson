@@ -5,14 +5,10 @@
 #define THROTTLE_IN_PIN 3
 #define STEERING_IN_PIN 4
 #define THROTTLE_OUT_PIN 5
-#define STEERING_OUT_PIN 8
+#define STEERING_OUT_PIN 6
 #define NEUTRAL_THROTTLE 1500
 #define NEUTRAL_STEERING 1500
-#define BUFFER_SIZE 10
-#define MAX_THROTTLE 2000
-#define MIN_THROTTLE 1000
-#define MAX_STEERING 1000
-#define MIN_STEERING 2000
+
 
 // never changing constants
 const char HANDSHAKE_START = '(';
@@ -73,13 +69,11 @@ void loop() {
   detectControllerState();
   
   // determine state from detection
-  rc_controller_state = detectControllerState2();//determineTraxxasControllerConnected(); // true if connected, false otherwise ( 0 == true, 1 == false)
+  rc_controller_state = determineTraxxasControllerConnected();//determineTraxxasControllerConnected(); // true if connected, false otherwise ( 0 == true, 1 == false)
 
-  bool jetson_controller_state = determineJetsonControllerConnected();
-  bool bluetooth_controller_state = isBluetoothConnected();
+  bool jetson_controller_state = determineJetsonControllerConnected();  
   
-  
-  isControllerConnected = rc_controller_state or jetson_controller_state or bluetooth_controller_state;
+  isControllerConnected = rc_controller_state or jetson_controller_state;
   if (isControllerConnected == false) {
     blinkLED();
   } else {
@@ -90,10 +84,9 @@ void loop() {
       latest_throttle = controller_throttle_read;
       latest_steering = controller_steering_read;
   } else if (jetson_controller_state == true) {
-      parseData("Serial");
-  } else if (bluetooth_controller_state == true) {
-      parseData("Serial1");
-  } 
+      parseData();
+      writeToSerial(latest_throttle, latest_steering);
+  }
 
   ensureSmoothBackTransition();
   writeToServo(latest_throttle, latest_steering);
@@ -221,7 +214,7 @@ void checkServo() {
   }
 }
 
-void parseData(String method) {
+void parseData() {
   /*
       method to parse received data given input method.
       Currently supported channel are:
@@ -231,49 +224,26 @@ void parseData(String method) {
       For example, by default, HANDSHAKE_START= "(", HANDSHAKE_END=")"
       Then a sample receivedData could be (1500,1500)
   */
-  if (method == "Serial") {
-    do {
-        char buf[20];
-        size_t num_read = Serial.readBytesUntil(HANDSHAKE_END, buf, 20);
-        char *token = strtok(buf, ",");
-        if (token[0] == HANDSHAKE_START) {
-          if (token != NULL) {
-            unsigned int curr_throttle_read = atoi(token + 1);
-            if (curr_throttle_read >= 1000 and curr_throttle_read <= 2000) {
-              latest_throttle = curr_throttle_read;
-            } 
+  do {
+      char buf[20];
+      size_t num_read = Serial.readBytesUntil(HANDSHAKE_END, buf, 20);
+      char *token = strtok(buf, ",");
+      if (token[0] == HANDSHAKE_START) {
+        if (token != NULL) {
+          unsigned int curr_throttle_read = atoi(token + 1);
+          if (curr_throttle_read >= 1000 and curr_throttle_read <= 2000) {
+            latest_throttle = curr_throttle_read;
+          } 
+        }
+        token = strtok(NULL, ",");
+        if (token != NULL) {
+          unsigned int curr_steering_read = atoi(token);
+          if (curr_steering_read >= 1000 and curr_steering_read <= 2000) {
+            latest_steering = curr_steering_read;
           }
-          token = strtok(NULL, ",");
-          if (token != NULL) {
-            unsigned int curr_steering_read = atoi(token);
-            if (curr_steering_read >= 1000 and curr_steering_read <= 2000) {
-              latest_steering = curr_steering_read;
-            }
-          }
-        } 
-    } while(Serial.available() > 0);
-  } else if (method == "Serial1") {
-      do {
-        char buf[20];
-        size_t num_read = Serial1.readBytesUntil(HANDSHAKE_END, buf, 20);
-        char *token = strtok(buf, ",");
-        if (token[0] == HANDSHAKE_START) {
-          if (token != NULL) {
-            unsigned int curr_throttle_read = atoi(token + 1);
-            if (curr_throttle_read >= 1000 and curr_throttle_read <= 2000) {
-              latest_throttle = curr_throttle_read;
-            }
-          }
-          token = strtok(NULL, ",");
-          if (token != NULL) {
-            unsigned int curr_steering_read = atoi(token);
-            if (curr_steering_read >= 1000 and curr_steering_read <= 2000) {
-              latest_steering = curr_steering_read;
-            }
-          }
-        } 
-    } while(Serial1.available() > 0);
-  }
+        }
+      } 
+  } while(Serial.available() > 0); 
 }
 
 bool determineTraxxasControllerConnected() {
@@ -291,7 +261,7 @@ void writeToServo(unsigned int throttle, unsigned int steering) {
   latest_steering = steering;
   servoThrottle.writeMicroseconds(latest_throttle);
   servoSteering.writeMicroseconds(latest_steering);
-  writeToSerial(latest_throttle, latest_steering);
+//  writeToSerial(latest_throttle, latest_steering);
 }
 
 void writeToBluetooth(unsigned int throttle, unsigned int steering) {
