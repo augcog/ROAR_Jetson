@@ -112,7 +112,7 @@ class ArduinoCommandSender(Part):
         """
         # if self.prev_throttle != new_throttle or self.prev_steering != new_steering:
         serial_msg = '({},{})'.format(new_throttle, new_steering)
-        self.logger.debug(f"Sending [{serial_msg.rstrip()}]")
+        # self.logger.debug(f"Sending [{serial_msg.rstrip()}]")
         self.serial.write(serial_msg.encode('ascii'))
 
     def shutdown(self):
