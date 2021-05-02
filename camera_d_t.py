@@ -230,8 +230,8 @@ class RealsenseD435iAndT265(Part):
         else:
             location = (self.t2m @ t_tvec)[:3]
             rotation = self.rvec_to_rpy(rvec=t_rvec)
-            rotation = np.array([-rotation[0], rotation[1], -rotation[2]])
-            velocity = np.array([-t_vvec[0], -t_vvec[1], t_vvec[2]])
+            rotation = np.array([rotation[0], rotation[1], rotation[2]])
+            velocity = np.array([t_vvec[0], t_vvec[1], t_vvec[2]])
             return location, rotation, velocity
 
     """
