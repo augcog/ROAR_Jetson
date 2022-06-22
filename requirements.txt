@@ -1,5 +1,5 @@
 certifi==2019.11.28
-numpy==1.18.2
+numpy==1.22.0
 opencv-python==4.2.0.32
 Pillow==7.0.0
 prettytable
